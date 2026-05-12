@@ -26,11 +26,26 @@ $last7 = (int)$pdo->query("SELECT COUNT(*) FROM visits WHERE visit_date >= DATE_
     <div class="admin-layout">
 
         <header class="admin-header">
-            <div>
-                <div class="admin-brand">Tadeo Bar</div>
-                <div class="admin-muted">I identifikuar si <?= e($admin['username']) ?></div>
+            <div class="admin-topbar">
+                <div class="admin-identity">
+                    <div class="admin-brand">Tadeo Bar</div>
+                    <?php if (isset($admin)): ?>
+                        <div class="admin-muted">I identifikuar si <?= e($admin['username']) ?></div>
+                    <?php endif; ?>
+                </div>
+
+                <a class="admin-logout" href="/tadeo-admin/logout.php">Dil</a>
             </div>
-            <a class="logout-top" href="/tadeo-admin/logout.php">Dil</a>
+
+            <nav class="admin-nav">
+                <a class="active" href="/tadeo-admin/dashboard.php">Paneli</a>
+                <a href="/tadeo-admin/products.php">Produktet</a>
+                <a href="/tadeo-admin/categories.php">Kategoritë</a>
+                <a href="/tadeo-admin/images.php">Imazhet</a>
+                <a href="/tadeo-admin/wifi.php">WiFi</a>
+                <a href="/tadeo-admin/analytics.php">Analitika</a>
+                <a href="/tadeo-admin/settings.php">Cilësimet</a>
+            </nav>
         </header>
 
         <nav class="admin-nav">
