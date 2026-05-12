@@ -189,7 +189,7 @@ $wifiPayload = public_wifi_payload($settings['wifi_ssid'], $settings['wifi_passw
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#070707">
     <meta name="description" content="<?= e($barName) ?> digital menu and WiFi access.">
-    <link rel="stylesheet" href="/assets/css/public-menu.css?v=20260512-public-final-1">
+    <link rel="stylesheet" href="/assets/css/public-menu.css?v=20260512-public-mobile-qr-2">
 </head>
 <body>
     <div class="site-shell" id="top">

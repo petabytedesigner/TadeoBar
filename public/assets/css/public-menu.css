@@ -923,3 +923,131 @@ svg {
 }
 
 /* FINAL PUBLIC QR + HERO POLISH END */
+
+/* FINAL PUBLIC MOBILE QR FIX START */
+
+/* Force QR to render correctly even when global SVG icon styles exist */
+.wifi-qr .wifi-qr-svg,
+.wifi-qr .wifi-qr-svg svg {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    stroke: none !important;
+    fill: initial !important;
+}
+
+.wifi-qr .wifi-qr-svg *,
+.wifi-qr svg * {
+    stroke: none !important;
+}
+
+.wifi-qr .wifi-qr-svg rect,
+.wifi-qr svg rect {
+    fill: #ffffff !important;
+}
+
+.wifi-qr .wifi-qr-svg path,
+.wifi-qr svg path {
+    fill: #000000 !important;
+}
+
+/* Some mobile browsers/Desktop-site mode report around 980px, so force mobile earlier */
+@media (max-width: 980px) {
+    .site-shell {
+        width: 100% !important;
+        padding: 10px !important;
+    }
+
+    .hero {
+        min-height: auto !important;
+        padding: 20px 18px !important;
+        border-radius: 24px !important;
+    }
+
+    .topbar {
+        align-items: flex-start !important;
+        gap: 12px !important;
+    }
+
+    .brand-text-only strong {
+        font-size: 30px !important;
+        line-height: 1 !important;
+    }
+
+    .brand-text-only small {
+        font-size: 11px !important;
+        letter-spacing: 3px !important;
+    }
+
+    .hero-grid {
+        grid-template-columns: 1fr !important;
+        margin-top: 48px !important;
+        gap: 34px !important;
+    }
+
+    .eyebrow {
+        font-size: 28px !important;
+    }
+
+    .hero-copy h1 {
+        font-size: clamp(56px, 15vw, 82px) !important;
+        line-height: .94 !important;
+    }
+
+    .hero-text {
+        font-size: 17px !important;
+        line-height: 1.55 !important;
+    }
+
+    .wifi-card {
+        width: 100% !important;
+        padding: 22px !important;
+        border-radius: 26px !important;
+    }
+
+    .wifi-buttons {
+        grid-template-columns: 1fr !important;
+    }
+
+    .wifi-qr:not([hidden]) {
+        width: min(230px, 68vw) !important;
+        height: min(230px, 68vw) !important;
+        margin: 18px auto 0 !important;
+    }
+
+    .menu-panel {
+        margin-top: 12px !important;
+        border-radius: 24px !important;
+    }
+
+    .category-nav {
+        padding: 12px 14px !important;
+    }
+
+    .menu-content {
+        padding: 14px !important;
+    }
+
+    .product-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+
+    .product-card {
+        display: grid !important;
+        grid-template-columns: 112px minmax(0, 1fr) !important;
+        min-height: 126px !important;
+    }
+
+    .product-media {
+        height: 100% !important;
+        min-height: 126px !important;
+    }
+
+    .product-body {
+        min-height: 126px !important;
+        padding: 12px !important;
+    }
+}
+
+/* FINAL PUBLIC MOBILE QR FIX END */
