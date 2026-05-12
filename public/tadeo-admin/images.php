@@ -375,6 +375,68 @@ $flash = flash_message($msg);
             margin-top: 18px;
         }
 
+
+        /* Images manager compact missing-image sections */
+        .media-collapsible {
+            border: 1px solid rgba(255,255,255,.10);
+            border-radius: 20px;
+            background:
+                radial-gradient(circle at 12% 0%, rgba(243, 201, 109, .08), transparent 32%),
+                rgba(255,255,255,.035);
+            overflow: hidden;
+        }
+
+        .media-collapsible summary {
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 16px 18px;
+            color: var(--gold-light);
+            font-weight: 900;
+        }
+
+        .media-collapsible summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .media-collapsible-title {
+            display: grid;
+            gap: 4px;
+        }
+
+        .media-collapsible-title span {
+            color: var(--gold-light);
+            font-size: 18px;
+        }
+
+        .media-collapsible-title small {
+            color: var(--muted);
+            font-weight: 700;
+            line-height: 1.4;
+        }
+
+        .media-collapsible-count {
+            min-width: 42px;
+            min-height: 34px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(243, 201, 109, .28);
+            background: rgba(243, 201, 109, .10);
+            color: var(--gold-light);
+            font-weight: 900;
+        }
+
+        .media-collapsible-body {
+            padding: 16px;
+            border-top: 1px solid rgba(255,255,255,.10);
+        }
+
         @media (max-width: 780px) {
             .media-tabs,
             .modal-actions {
@@ -537,8 +599,15 @@ $flash = flash_message($msg);
                 <?php endif; ?>
             </section>
 
-            <section class="media-section">
-                <h2>Produkte pa imazh</h2>
+            <details class="media-section media-collapsible">
+                <summary>
+                    <span class="media-collapsible-title">
+                        <span>Produkte pa imazh</span>
+                        <small>Hape vetëm kur do të shtosh ose kontrollosh imazhet që mungojnë.</small>
+                    </span>
+                    <strong class="media-collapsible-count"><?= e($withoutProductImageCount) ?></strong>
+                </summary>
+                <div class="media-collapsible-body">
                 <?php if ($productsWithoutImages === []): ?>
                     <div class="panel"><p class="admin-muted">Të gjitha produktet kanë imazh.</p></div>
                 <?php else: ?>
@@ -567,10 +636,17 @@ $flash = flash_message($msg);
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
-            </section>
-
-            <section class="media-section">
-                <h2>Kategori pa imazh</h2>
+                </div>
+            </details>
+            <details class="media-section media-collapsible">
+                <summary>
+                    <span class="media-collapsible-title">
+                        <span>Kategori pa imazh</span>
+                        <small>Hape vetëm kur do të shtosh ose kontrollosh imazhet e kategorive që mungojnë.</small>
+                    </span>
+                    <strong class="media-collapsible-count"><?= e($withoutCategoryImageCount) ?></strong>
+                </summary>
+                <div class="media-collapsible-body">
                 <?php if ($categoriesWithoutImages === []): ?>
                     <div class="panel"><p class="admin-muted">Të gjitha kategoritë kanë imazh.</p></div>
                 <?php else: ?>
@@ -599,8 +675,8 @@ $flash = flash_message($msg);
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
-            </section>
-
+                </div>
+            </details>
             <section class="media-section">
                 <h2>Imazhe të palidhura</h2>
                 <?php if ($unusedImages === []): ?>
