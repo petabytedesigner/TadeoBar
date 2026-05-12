@@ -85,7 +85,7 @@ $totalCount = $productCount + $categoryCount;
     <meta charset="utf-8">
     <title>Imazhet | Tadeo Bar Admin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-images-errors-2">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-admin-header-actions-2">
     <style>
         .media-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
         .media-section { margin-top: 18px; }

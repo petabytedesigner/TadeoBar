@@ -9,7 +9,11 @@ $pdo = db();
 
 $activeProducts = (int)$pdo->query("SELECT COUNT(*) FROM products WHERE is_active = 1")->fetchColumn();
 $hiddenProducts = (int)$pdo->query("SELECT COUNT(*) FROM products WHERE is_active = 0")->fetchColumn();
-$categories = (int)$pdo->query("SELECT COUNT(*) FROM categories WHERE is_active = 1")->fetchColumn();
+$totalProducts = $activeProducts + $hiddenProducts;
+
+$activeCategories = (int)$pdo->query("SELECT COUNT(*) FROM categories WHERE is_active = 1")->fetchColumn();
+$hiddenCategories = (int)$pdo->query("SELECT COUNT(*) FROM categories WHERE is_active = 0")->fetchColumn();
+$totalCategories = $activeCategories + $hiddenCategories;
 
 function dashboard_visit_count_between(PDO $pdo, string $startDate, string $endDate): int
 {
@@ -36,7 +40,76 @@ $last7 = dashboard_visit_count_between($pdo, $last7StartDate, $todayDate);
     <meta charset="utf-8">
     <title>Paneli | Tadeo Bar Admin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-dashboard-analytics-sync-1">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-admin-header-actions-2">
+    <style>
+        .dashboard-sections {
+            display: grid;
+            grid-template-columns: minmax(0, 1.05fr) minmax(280px, .95fr);
+            gap: 18px;
+            margin-top: 24px;
+        }
+
+        .dashboard-status-list {
+            display: grid;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .dashboard-status-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 14px;
+            border: 1px solid rgba(255, 255, 255, .1);
+            border-radius: 16px;
+            background: rgba(255, 255, 255, .04);
+        }
+
+        .dashboard-status-item span {
+            color: var(--muted);
+            font-weight: 700;
+        }
+
+        .dashboard-status-item strong {
+            color: var(--gold-light);
+            font-weight: 900;
+        }
+
+        .dashboard-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .dashboard-actions .btn {
+            width: 100%;
+            min-height: 52px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dashboard-note {
+            margin-top: 16px;
+            padding: 14px;
+            border-radius: 16px;
+            background: rgba(243, 201, 109, .08);
+            border: 1px solid rgba(243, 201, 109, .18);
+            color: var(--muted);
+            line-height: 1.55;
+        }
+
+        @media (max-width: 860px) {
+            .dashboard-sections {
+                grid-template-columns: 1fr;
+            }
+
+            .dashboard-actions {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="admin-layout">
@@ -44,7 +117,7 @@ $last7 = dashboard_visit_count_between($pdo, $last7StartDate, $todayDate);
 
         <main>
             <h1 class="admin-title">Paneli</h1>
-            <p class="admin-muted">Përmbledhje e menusë dhe vizitorëve.</p>
+            <p class="admin-muted">Përmbledhje e menusë, kategorive dhe vizitorëve.</p>
 
             <section class="grid">
                 <article class="stat-card">
@@ -59,7 +132,7 @@ $last7 = dashboard_visit_count_between($pdo, $last7StartDate, $todayDate);
 
                 <article class="stat-card">
                     <small>Kategori aktive</small>
-                    <strong><?= e($categories) ?></strong>
+                    <strong><?= e($activeCategories) ?></strong>
                 </article>
 
                 <article class="stat-card">
@@ -78,11 +151,55 @@ $last7 = dashboard_visit_count_between($pdo, $last7StartDate, $todayDate);
                 </article>
             </section>
 
-            <section class="panel">
-                <h2>Hapat e radhës</h2>
-                <p class="admin-muted">
-                    Produktet janë lidhur me databazën. Më pas vazhdojmë me kategoritë, imazhet, WiFi, analitikën dhe cilësimet.
-                </p>
+            <section class="dashboard-sections">
+                <article class="panel">
+                    <h2>Gjendja e menusë</h2>
+                    <p class="admin-muted">
+                        Këtu shikon shpejt nëse menuja, kategoritë dhe vizitorët janë në gjendje normale.
+                    </p>
+
+                    <div class="dashboard-status-list">
+                        <div class="dashboard-status-item">
+                            <span>Totali i produkteve</span>
+                            <strong><?= e($totalProducts) ?></strong>
+                        </div>
+
+                        <div class="dashboard-status-item">
+                            <span>Produkte të dukshme në menu</span>
+                            <strong><?= e($activeProducts) ?></strong>
+                        </div>
+
+                        <div class="dashboard-status-item">
+                            <span>Totali i kategorive</span>
+                            <strong><?= e($totalCategories) ?></strong>
+                        </div>
+
+                        <div class="dashboard-status-item">
+                            <span>Kategori të dukshme në menu</span>
+                            <strong><?= e($activeCategories) ?></strong>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-note">
+                        Ndryshimet që bën te produktet, kategoritë, çmimet dhe WiFi reflektohen në menunë publike pas rifreskimit të faqes.
+                    </div>
+                </article>
+
+                <article class="panel">
+                    <h2>Veprime të shpejta</h2>
+                    <p class="admin-muted">
+                        Hap menjëherë pjesët kryesore të administrimit.
+                    </p>
+
+                    <div class="dashboard-actions">
+                        <a class="btn btn-secondary" href="/tadeo-admin/products.php">Produktet</a>
+                        <a class="btn btn-secondary" href="/tadeo-admin/categories.php">Kategoritë</a>
+                        <a class="btn btn-secondary" href="/tadeo-admin/images.php">Imazhet</a>
+                        <a class="btn btn-secondary" href="/tadeo-admin/wifi.php">WiFi</a>
+                        <a class="btn btn-secondary" href="/tadeo-admin/analytics.php">Analitika</a>
+                        <a class="btn btn-secondary" href="/tadeo-admin/settings.php">Cilësimet</a>
+                    </div>
+                </article>
             </section>
         </main>
     </div>

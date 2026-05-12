@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="utf-8">
     <title>Hyrje Admin | Tadeo Bar</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-analytics-1">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-admin-header-actions-2">
 </head>
 <body class="admin-login-page">
     <main class="login-card">
