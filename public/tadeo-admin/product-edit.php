@@ -98,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="utf-8">
     <title>Ndrysho Produkt | Tadeo Bar Admin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-categories-1">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-category-images-1">
 </head>
 <body>
     <div class="admin-layout">
