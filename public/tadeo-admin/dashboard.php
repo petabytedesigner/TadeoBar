@@ -15,10 +15,10 @@ $yesterday = (int)$pdo->query("SELECT COUNT(*) FROM visits WHERE visit_date = DA
 $last7 = (int)$pdo->query("SELECT COUNT(*) FROM visits WHERE visit_date >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)")->fetchColumn();
 ?>
 <!doctype html>
-<html lang="en">
+<html lang="sq">
 <head>
     <meta charset="utf-8">
-    <title>Tadeo Bar Admin</title>
+    <title>Paneli | Tadeo Bar Admin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/assets/css/admin.css">
 </head>
@@ -27,61 +27,61 @@ $last7 = (int)$pdo->query("SELECT COUNT(*) FROM visits WHERE visit_date >= DATE_
         <header class="admin-header">
             <div>
                 <div class="admin-brand">Tadeo Bar</div>
-                <div class="admin-muted">Logged in as <?= e($admin['username']) ?></div>
+                <div class="admin-muted">I loguar si <?= e($admin['username']) ?></div>
             </div>
 
             <nav class="admin-nav">
-                <a class="active" href="/tadeo-admin/dashboard.php">Dashboard</a>
-                <a href="#">Products</a>
-                <a href="#">Categories</a>
-                <a href="#">Images</a>
+                <a class="active" href="/tadeo-admin/dashboard.php">Paneli</a>
+                <a href="/tadeo-admin/products.php">Produktet</a>
+                <a href="#">Kategoritë</a>
+                <a href="#">Imazhet</a>
                 <a href="#">WiFi</a>
-                <a href="#">Analytics</a>
-                <a href="#">Settings</a>
-                <a href="/tadeo-admin/logout.php">Logout</a>
+                <a href="#">Analitika</a>
+                <a href="#">Cilësimet</a>
+                <a href="/tadeo-admin/logout.php">Dil</a>
             </nav>
         </header>
 
         <main>
-            <h1 class="admin-title">Dashboard</h1>
-            <p class="admin-muted">Overview of menu and visitor activity.</p>
+            <h1 class="admin-title">Paneli</h1>
+            <p class="admin-muted">Përmbledhje e menusë dhe vizitorëve.</p>
 
             <section class="grid">
                 <article class="stat-card">
-                    <small>Active products</small>
+                    <small>Produkte aktive</small>
                     <strong><?= e($activeProducts) ?></strong>
                 </article>
 
                 <article class="stat-card">
-                    <small>Hidden products</small>
+                    <small>Produkte të fshehura</small>
                     <strong><?= e($hiddenProducts) ?></strong>
                 </article>
 
                 <article class="stat-card">
-                    <small>Active categories</small>
+                    <small>Kategori aktive</small>
                     <strong><?= e($categories) ?></strong>
                 </article>
 
                 <article class="stat-card">
-                    <small>Visitors today</small>
+                    <small>Vizitorë sot</small>
                     <strong><?= e($today) ?></strong>
                 </article>
 
                 <article class="stat-card">
-                    <small>Visitors yesterday</small>
+                    <small>Vizitorë dje</small>
                     <strong><?= e($yesterday) ?></strong>
                 </article>
 
                 <article class="stat-card">
-                    <small>Visitors last 7 days</small>
+                    <small>Vizitorë 7 ditët e fundit</small>
                     <strong><?= e($last7) ?></strong>
                 </article>
             </section>
 
             <section class="panel">
-                <h2>Next modules</h2>
+                <h2>Modulet e radhës</h2>
                 <p class="admin-muted">
-                    Products, Categories, Images, WiFi, Analytics and Settings will be connected step by step.
+                    Produktet, kategoritë, imazhet, WiFi, analitika dhe cilësimet do lidhen hap pas hapi.
                 </p>
             </section>
         </main>
