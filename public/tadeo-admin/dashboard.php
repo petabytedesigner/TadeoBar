@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/admin_header.php';
 
 $admin = require_admin();
 $pdo = db();
@@ -25,39 +26,8 @@ $last7 = (int)$pdo->query("SELECT COUNT(*) FROM visits WHERE visit_date >= DATE_
 <body>
     <div class="admin-layout">
 
-        <header class="admin-header">
-            <div class="admin-topbar">
-                <div class="admin-identity">
-                    <div class="admin-brand">Tadeo Bar</div>
-                    <?php if (isset($admin)): ?>
-                        <div class="admin-muted">I identifikuar si <?= e($admin['username']) ?></div>
-                    <?php endif; ?>
-                </div>
-
-                <a class="admin-logout" href="/tadeo-admin/logout.php">Dil</a>
-            </div>
-
-            <nav class="admin-nav">
-                <a class="active" href="/tadeo-admin/dashboard.php">Paneli</a>
-                <a href="/tadeo-admin/products.php">Produktet</a>
-                <a href="/tadeo-admin/categories.php">Kategoritë</a>
-                <a href="/tadeo-admin/images.php">Imazhet</a>
-                <a href="/tadeo-admin/wifi.php">WiFi</a>
-                <a href="/tadeo-admin/analytics.php">Analitika</a>
-                <a href="/tadeo-admin/settings.php">Cilësimet</a>
-            </nav>
-        </header>
-
-        <nav class="admin-nav">
-            <a class="active" href="/tadeo-admin/dashboard.php">Paneli</a>
-            <a  href="/tadeo-admin/products.php">Produktet</a>
-            <a  href="#">Kategoritë</a>
-            <a  href="#">Imazhet</a>
-            <a  href="#">WiFi</a>
-            <a  href="#">Analitika</a>
-            <a  href="#">Cilësimet</a>
-        </nav>
-
+        
+        <?php render_admin_header($admin, 'dashboard'); ?>
 
         <main>
             <h1 class="admin-title">Paneli</h1>
