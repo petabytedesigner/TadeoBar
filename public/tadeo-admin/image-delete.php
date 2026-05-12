@@ -40,20 +40,7 @@ function image_delete_safe_relative_path(string $path): ?string
         return null;
     }
 
-    $allowedRoots = [
-        'uploads/products/',
-        'uploads/categories/',
-    ];
-
-    $allowed = false;
-    foreach ($allowedRoots as $root) {
-        if (str_starts_with($path, $root)) {
-            $allowed = true;
-            break;
-        }
-    }
-
-    if (!$allowed) {
+    if (!str_starts_with($path, 'uploads/products/') && !str_starts_with($path, 'uploads/categories/')) {
         return null;
     }
 
@@ -85,8 +72,8 @@ try {
         $stmt->execute([$relativePath]);
     }
 
-    if (is_file($absolutePath)) {
-        unlink($absolutePath);
+    if (is_file($absolutePath) && !unlink($absolutePath)) {
+        redirect('/tadeo-admin/images.php?msg=delete_failed');
     }
 
     redirect('/tadeo-admin/images.php?msg=deleted');

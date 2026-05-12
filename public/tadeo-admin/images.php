@@ -128,8 +128,9 @@ function list_uploaded_images(string $folder): array
 function flash_message(string $msg): string
 {
     return match ($msg) {
-        'detached' => 'Imazhi u hoq nga produkti/kategoria.',
+        'detached' => 'Imazhi u hoq nga produkti/kategoria. File-i mbeti në server.',
         'deleted' => 'Imazhi u fshi përgjithmonë.',
+        'delete_failed' => 'Lidhja u hoq, por file-i nuk u fshi dot nga serveri.',
         'csrf' => 'Kontrolli i sigurisë dështoi. Rifresko faqen dhe provo përsëri.',
         'invalid' => 'Kërkesa nuk është e vlefshme.',
         'error' => 'Veprimi nuk u krye. Provo përsëri.',
@@ -137,22 +138,60 @@ function flash_message(string $msg): string
     };
 }
 
+$hasCategoryImageColumn = false;
 $productImages = [];
 $categoryImages = [];
+$productsWithoutImages = [];
+$categoriesWithoutImages = [];
 
 try {
+    $hasCategoryImageColumn = table_column_exists($pdo, 'categories', 'icon_image_path');
+
     $productImages = $pdo->query(
-        "SELECT id, menu_number, name_sq, name_en, image_path
-         FROM products
-         WHERE image_path IS NOT NULL AND image_path <> ''
-         ORDER BY menu_number, id"
+        "SELECT
+            p.id,
+            p.menu_number,
+            p.name_sq,
+            p.name_en,
+            p.image_path,
+            c.name_sq AS category_name
+         FROM products p
+         LEFT JOIN categories c ON c.id = p.category_id
+         WHERE p.image_path IS NOT NULL AND p.image_path <> ''
+         ORDER BY p.menu_number, p.id"
     )->fetchAll();
 
-    if (table_column_exists($pdo, 'categories', 'icon_image_path')) {
+    $productsWithoutImages = $pdo->query(
+        "SELECT
+            p.id,
+            p.menu_number,
+            p.name_sq,
+            p.name_en,
+            c.name_sq AS category_name
+         FROM products p
+         LEFT JOIN categories c ON c.id = p.category_id
+         WHERE p.image_path IS NULL OR p.image_path = ''
+         ORDER BY p.menu_number, p.id"
+    )->fetchAll();
+
+    if ($hasCategoryImageColumn) {
         $categoryImages = $pdo->query(
             "SELECT id, name_sq, name_en, icon, icon_image_path
              FROM categories
              WHERE icon_image_path IS NOT NULL AND icon_image_path <> ''
+             ORDER BY sort_order, id"
+        )->fetchAll();
+
+        $categoriesWithoutImages = $pdo->query(
+            "SELECT id, name_sq, name_en, icon
+             FROM categories
+             WHERE icon_image_path IS NULL OR icon_image_path = ''
+             ORDER BY sort_order, id"
+        )->fetchAll();
+    } else {
+        $categoriesWithoutImages = $pdo->query(
+            "SELECT id, name_sq, name_en, icon
+             FROM categories
              ORDER BY sort_order, id"
         )->fetchAll();
     }
@@ -191,6 +230,8 @@ foreach ($uploadedPaths as $path) {
 
 $productCount = count($productImages);
 $categoryCount = count($categoryImages);
+$withoutProductImageCount = count($productsWithoutImages);
+$withoutCategoryImageCount = count($categoriesWithoutImages);
 $unusedCount = count($unusedImages);
 $totalCount = $productCount + $categoryCount;
 $flash = flash_message($msg);
@@ -281,11 +322,19 @@ $flash = flash_message($msg);
             width: 100%;
         }
 
-        .media-warning {
-            margin-top: 10px;
-            color: #ffb6b6;
-            font-size: 12px;
-            line-height: 1.45;
+        .media-empty-preview {
+            width: 100%;
+            height: 120px;
+            border-radius: 16px;
+            border: 1px dashed rgba(243, 201, 109, .28);
+            background:
+                radial-gradient(circle at 30% 20%, rgba(243, 201, 109, .12), transparent 34%),
+                rgba(255,255,255,.035);
+            display: grid;
+            place-items: center;
+            color: var(--gold-light);
+            font-weight: 900;
+            margin-bottom: 12px;
         }
 
         .modal-backdrop {
@@ -341,7 +390,7 @@ $flash = flash_message($msg);
         <main>
             <h1 class="admin-title">Imazhet</h1>
             <p class="admin-muted">
-                Menaxho imazhet e produkteve dhe kategorive. Mund të heqësh lidhjen nga menuja ose të fshish file-in përgjithmonë.
+                Menaxho imazhet e produkteve dhe kategorive. Mund të shtosh, ndryshosh, heqësh lidhjen ose të fshish file-in përgjithmonë.
             </p>
 
             <?php if ($flash !== ''): ?>
@@ -355,6 +404,8 @@ $flash = flash_message($msg);
             <section class="grid">
                 <article class="stat-card"><small>Imazhe produktesh</small><strong><?= e($productCount) ?></strong></article>
                 <article class="stat-card"><small>Imazhe kategorish</small><strong><?= e($categoryCount) ?></strong></article>
+                <article class="stat-card"><small>Produkte pa imazh</small><strong><?= e($withoutProductImageCount) ?></strong></article>
+                <article class="stat-card"><small>Kategori pa imazh</small><strong><?= e($withoutCategoryImageCount) ?></strong></article>
                 <article class="stat-card"><small>Imazhe të palidhura</small><strong><?= e($unusedCount) ?></strong></article>
                 <article class="stat-card"><small>Në përdorim</small><strong><?= e($totalCount) ?></strong></article>
             </section>
@@ -365,7 +416,7 @@ $flash = flash_message($msg);
             </section>
 
             <section class="media-section">
-                <h2>Produktet</h2>
+                <h2>Imazhe produktesh</h2>
                 <?php if ($productImages === []): ?>
                     <div class="panel"><p class="admin-muted">Ende nuk ka imazhe produktesh.</p></div>
                 <?php else: ?>
@@ -392,7 +443,7 @@ $flash = flash_message($msg);
                                 <div class="media-path"><?= e($info['path']) ?></div>
                                 <div class="media-meta">
                                     <span>Madhësia: <?= e(human_file_size($info['size'])) ?></span>
-                                    <span>Tipi: Produkt</span>
+                                    <span>Kategoria: <?= e($image['category_name'] ?? '—') ?></span>
                                 </div>
 
                                 <div class="media-actions">
@@ -426,7 +477,7 @@ $flash = flash_message($msg);
             </section>
 
             <section class="media-section">
-                <h2>Kategoritë</h2>
+                <h2>Imazhe kategorish</h2>
                 <?php if ($categoryImages === []): ?>
                     <div class="panel"><p class="admin-muted">Ende nuk ka imazhe kategorish.</p></div>
                 <?php else: ?>
@@ -479,6 +530,70 @@ $flash = flash_message($msg);
                                             <button class="btn btn-danger" type="submit">Fshi përgjithmonë</button>
                                         </form>
                                     <?php endif; ?>
+                                </div>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </section>
+
+            <section class="media-section">
+                <h2>Produkte pa imazh</h2>
+                <?php if ($productsWithoutImages === []): ?>
+                    <div class="panel"><p class="admin-muted">Të gjitha produktet kanë imazh.</p></div>
+                <?php else: ?>
+                    <div class="product-grid">
+                        <?php foreach ($productsWithoutImages as $product): ?>
+                            <article class="product-admin-card">
+                                <div class="product-admin-top">
+                                    <div class="product-number">#<?= e($product['menu_number']) ?></div>
+                                    <span class="badge badge-hidden">Pa imazh</span>
+                                </div>
+
+                                <div class="media-empty-preview">Shto imazh</div>
+
+                                <h3><?= e($product['name_sq']) ?></h3>
+                                <p><?= e($product['name_en']) ?></p>
+
+                                <div class="media-meta">
+                                    <span>Kategoria: <?= e($product['category_name'] ?? '—') ?></span>
+                                    <span>Tipi: Produkt</span>
+                                </div>
+
+                                <div class="media-actions">
+                                    <a class="btn btn-secondary" href="/tadeo-admin/product-edit.php?id=<?= e($product['id']) ?>">Shto imazh</a>
+                                </div>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </section>
+
+            <section class="media-section">
+                <h2>Kategori pa imazh</h2>
+                <?php if ($categoriesWithoutImages === []): ?>
+                    <div class="panel"><p class="admin-muted">Të gjitha kategoritë kanë imazh.</p></div>
+                <?php else: ?>
+                    <div class="product-grid">
+                        <?php foreach ($categoriesWithoutImages as $category): ?>
+                            <article class="product-admin-card">
+                                <div class="product-admin-top">
+                                    <div class="product-number"><?= e($category['icon'] ?: '•') ?></div>
+                                    <span class="badge badge-hidden">Pa imazh</span>
+                                </div>
+
+                                <div class="media-empty-preview">Shto imazh</div>
+
+                                <h3><?= e($category['name_sq']) ?></h3>
+                                <p><?= e($category['name_en']) ?></p>
+
+                                <div class="media-meta">
+                                    <span>Tipi: Kategori</span>
+                                    <span>Statusi: Pa imazh</span>
+                                </div>
+
+                                <div class="media-actions">
+                                    <a class="btn btn-secondary" href="/tadeo-admin/category-edit.php?id=<?= e($category['id']) ?>">Shto imazh</a>
                                 </div>
                             </article>
                         <?php endforeach; ?>
