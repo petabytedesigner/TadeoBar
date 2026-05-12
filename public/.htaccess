@@ -1,0 +1,16 @@
+ErrorDocument 400 /system-pages/400.html
+ErrorDocument 401 /system-pages/401.html
+ErrorDocument 403 /system-pages/403.html
+ErrorDocument 404 /system-pages/404.html
+ErrorDocument 405 /system-pages/405.html
+ErrorDocument 408 /system-pages/408.html
+ErrorDocument 410 /system-pages/410.html
+ErrorDocument 413 /system-pages/413.html
+ErrorDocument 414 /system-pages/414.html
+ErrorDocument 415 /system-pages/415.html
+ErrorDocument 429 /system-pages/429.html
+ErrorDocument 500 /system-pages/500.html
+ErrorDocument 501 /system-pages/501.html
+ErrorDocument 502 /system-pages/502.html
+ErrorDocument 503 /system-pages/503.html
+ErrorDocument 504 /system-pages/504.html
