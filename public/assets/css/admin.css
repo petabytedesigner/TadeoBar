@@ -657,3 +657,63 @@ body.modal-open {
     height: 100%;
     object-fit: cover;
 }
+
+/* Analytics dashboard */
+.analytics-panel h2 {
+    margin-top: 0;
+    color: var(--gold-light);
+    font-family: Georgia, serif;
+}
+
+.analytics-chart {
+    display: grid;
+    grid-template-columns: repeat(30, minmax(18px, 1fr));
+    gap: 7px;
+    align-items: end;
+    min-height: 260px;
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 1px solid rgba(255, 255, 255, .08);
+}
+
+.analytics-bar-wrap {
+    height: 220px;
+    display: grid;
+    grid-template-rows: 24px 1fr 24px;
+    align-items: end;
+    gap: 6px;
+    min-width: 0;
+}
+
+.analytics-bar-value {
+    color: var(--muted);
+    font-size: 11px;
+    text-align: center;
+    min-height: 18px;
+}
+
+.analytics-bar {
+    width: 100%;
+    min-height: 4px;
+    border-radius: 999px 999px 4px 4px;
+    background: linear-gradient(180deg, var(--gold-light), var(--gold));
+    box-shadow: 0 10px 24px rgba(217, 164, 65, .14);
+}
+
+.analytics-bar-label {
+    color: var(--muted);
+    font-size: 10px;
+    text-align: center;
+    transform: rotate(-45deg);
+    transform-origin: center;
+    white-space: nowrap;
+}
+
+@media (max-width: 780px) {
+    .analytics-chart {
+        overflow-x: auto;
+        grid-template-columns: repeat(30, 26px);
+        padding-bottom: 10px;
+    }
+}
+

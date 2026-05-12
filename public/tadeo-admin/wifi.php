@@ -98,7 +98,7 @@ $qrPayload = wifi_qr_payload_local($data['ssid'], $data['password'], $data['secu
     <meta charset="utf-8">
     <title>WiFi | Tadeo Bar Admin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-wifi-local-qr-1">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-analytics-1">
     <style>
         .wifi-panel-grid {
             display: grid;
