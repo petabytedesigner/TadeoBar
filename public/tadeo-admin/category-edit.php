@@ -3,10 +3,13 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/csrf.php';
+require_once __DIR__ . '/../includes/upload.php';
 require_once __DIR__ . '/../includes/admin_header.php';
 
 $admin = require_admin();
 $pdo = db();
+
+ensure_category_icon_image_column($pdo);
 
 $id = (int)($_GET['id'] ?? $_POST['id'] ?? 0);
 
@@ -43,6 +46,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Slug duhet të ketë vetëm shkronja të vogla, numra dhe minus.';
         } else {
             try {
+                $imagePath = handle_category_icon_upload(
+                    'icon_image_file',
+                    $data['name_en'] !== '' ? $data['name_en'] : $data['name_sq'],
+                    $category['icon_image_path'] ?? null
+                );
+
                 $stmt = $pdo->prepare("
                     UPDATE categories
                     SET
@@ -50,6 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         name_sq = ?,
                         name_en = ?,
                         icon = ?,
+                        icon_image_path = ?,
                         sort_order = ?,
                         is_active = ?
                     WHERE id = ?
@@ -60,6 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $data['name_sq'],
                     $data['name_en'],
                     $data['icon'],
+                    $imagePath,
                     $data['sort_order'],
                     $data['is_active'],
                     $id,
@@ -67,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 redirect('/tadeo-admin/categories.php?msg=Kategoria u përditësua');
             } catch (Throwable $e) {
-                $error = 'Kategoria nuk u përditësua. Kontrollo nëse slug ekziston tashmë.';
+                $error = 'Kategoria nuk u përditësua: ' . $e->getMessage();
             }
         }
     }
@@ -81,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="utf-8">
     <title>Ndrysho Kategori | Tadeo Bar Admin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-categories-1">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-category-images-1">
 </head>
 <body>
     <div class="admin-layout">
@@ -95,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="error"><?= e($error) ?></div>
             <?php endif; ?>
 
-            <form class="form-card" method="post">
+            <form class="form-card" method="post" enctype="multipart/form-data">
                 <?= csrf_field() ?>
                 <input type="hidden" name="id" value="<?= e($id) ?>">
 
@@ -116,13 +127,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <div>
-                        <label>Ikona</label>
+                        <label>Emoji fallback</label>
                         <input name="icon" value="<?= e($category['icon']) ?>">
+                        <div class="help-text">Përdoret vetëm nëse nuk ka imazh kategorie.</div>
                     </div>
 
                     <div>
                         <label>Renditja</label>
                         <input name="sort_order" type="number" min="1" value="<?= e($category['sort_order']) ?>" required>
+                    </div>
+
+                    <div class="full">
+                        <label>Ngarko / zëvendëso imazhin e kategorisë</label>
+                        <input name="icon_image_file" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+                        <div class="help-text">Nëse nuk zgjedh imazh të ri, imazhi aktual mbetet. Lejohen JPG, PNG ose WEBP, maksimumi 2 MB.</div>
+
+                        <?php if (!empty($category['icon_image_path'])): ?>
+                            <div class="current-image category-current-image">
+                                <img src="/<?= e($category['icon_image_path']) ?>" alt="<?= e($category['name_sq']) ?>">
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
 

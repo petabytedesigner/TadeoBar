@@ -3,10 +3,13 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/csrf.php';
+require_once __DIR__ . '/../includes/upload.php';
 require_once __DIR__ . '/../includes/admin_header.php';
 
 $admin = require_admin();
 $pdo = db();
+
+ensure_category_icon_image_column($pdo);
 
 $error = '';
 
@@ -38,11 +41,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Slug duhet të ketë vetëm shkronja të vogla, numra dhe minus.';
         } else {
             try {
+                $imagePath = handle_category_icon_upload(
+                    'icon_image_file',
+                    $data['name_en'] !== '' ? $data['name_en'] : $data['name_sq']
+                );
+
                 $stmt = $pdo->prepare("
                     INSERT INTO categories
-                        (slug, name_sq, name_en, icon, sort_order, is_active)
+                        (slug, name_sq, name_en, icon, icon_image_path, sort_order, is_active)
                     VALUES
-                        (?, ?, ?, ?, ?, ?)
+                        (?, ?, ?, ?, ?, ?, ?)
                 ");
 
                 $stmt->execute([
@@ -50,13 +58,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $data['name_sq'],
                     $data['name_en'],
                     $data['icon'],
+                    $imagePath,
                     $data['sort_order'],
                     $data['is_active'],
                 ]);
 
                 redirect('/tadeo-admin/categories.php?msg=Kategoria u shtua');
             } catch (Throwable $e) {
-                $error = 'Kategoria nuk u shtua. Kontrollo nëse slug ekziston tashmë.';
+                $error = 'Kategoria nuk u shtua: ' . $e->getMessage();
             }
         }
     }
@@ -68,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="utf-8">
     <title>Shto Kategori | Tadeo Bar Admin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-categories-1">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-category-images-1">
 </head>
 <body>
     <div class="admin-layout">
@@ -81,7 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="error"><?= e($error) ?></div>
             <?php endif; ?>
 
-            <form class="form-card" method="post">
+            <form class="form-card" method="post" enctype="multipart/form-data">
                 <?= csrf_field() ?>
 
                 <div class="form-grid">
@@ -102,13 +111,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <div>
-                        <label>Ikona</label>
+                        <label>Emoji fallback</label>
                         <input name="icon" value="<?= e($data['icon']) ?>">
+                        <div class="help-text">Përdoret vetëm nëse nuk ka imazh kategorie.</div>
                     </div>
 
                     <div>
                         <label>Renditja</label>
                         <input name="sort_order" type="number" min="1" value="<?= e($data['sort_order']) ?>" required>
+                    </div>
+
+                    <div class="full">
+                        <label>Ngarko imazh për kategorinë</label>
+                        <input name="icon_image_file" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+                        <div class="help-text">Lejohen JPG, PNG ose WEBP. Maksimumi 2 MB. Rekomandim: ikonë katrore 512×512.</div>
                     </div>
                 </div>
 

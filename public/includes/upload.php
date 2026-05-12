@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/helpers.php';
 
 const PRODUCT_UPLOAD_MAX_BYTES = 2097152; // 2 MB
+const CATEGORY_UPLOAD_MAX_BYTES = 2097152; // 2 MB
 
 function slugify_filename(string $value): string
 {
@@ -31,7 +32,7 @@ function slugify_filename(string $value): string
     $value = preg_replace('/[^a-z0-9]+/u', '-', $value) ?? '';
     $value = trim($value, '-');
 
-    return $value !== '' ? $value : 'product';
+    return $value !== '' ? $value : 'image';
 }
 
 function product_upload_dir(): string
@@ -39,15 +40,23 @@ function product_upload_dir(): string
     return dirname(__DIR__) . '/uploads/products';
 }
 
+function category_upload_dir(): string
+{
+    return dirname(__DIR__) . '/uploads/categories';
+}
+
 function public_product_upload_path(string $filename): string
 {
     return 'uploads/products/' . $filename;
 }
 
-function ensure_product_upload_dir(): void
+function public_category_upload_path(string $filename): string
 {
-    $dir = product_upload_dir();
+    return 'uploads/categories/' . $filename;
+}
 
+function ensure_safe_upload_dir(string $dir): void
+{
     if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
         throw new RuntimeException('Nuk u krijua dot folderi i imazheve.');
     }
@@ -56,11 +65,28 @@ function ensure_product_upload_dir(): void
 
     if (!file_exists($htaccess)) {
         file_put_contents($htaccess, "Options -Indexes\n<FilesMatch \"\\.(php|phtml|phar)$\">\nRequire all denied\n</FilesMatch>\n");
+        chmod($htaccess, 0644);
     }
 }
 
-function handle_product_image_upload(string $fieldName, string $baseName, ?string $currentPath = null): ?string
+function ensure_product_upload_dir(): void
 {
+    ensure_safe_upload_dir(product_upload_dir());
+}
+
+function ensure_category_upload_dir(): void
+{
+    ensure_safe_upload_dir(category_upload_dir());
+}
+
+function handle_image_upload(
+    string $fieldName,
+    string $baseName,
+    string $targetDir,
+    callable $publicPathResolver,
+    int $maxBytes,
+    ?string $currentPath = null
+): ?string {
     if (!isset($_FILES[$fieldName]) || !is_array($_FILES[$fieldName])) {
         return $currentPath;
     }
@@ -75,7 +101,7 @@ function handle_product_image_upload(string $fieldName, string $baseName, ?strin
         throw new RuntimeException('Ngarkimi i imazhit dështoi.');
     }
 
-    if (($file['size'] ?? 0) <= 0 || (int)$file['size'] > PRODUCT_UPLOAD_MAX_BYTES) {
+    if (($file['size'] ?? 0) <= 0 || (int)$file['size'] > $maxBytes) {
         throw new RuntimeException('Imazhi duhet të jetë maksimumi 2 MB.');
     }
 
@@ -98,19 +124,17 @@ function handle_product_image_upload(string $fieldName, string $baseName, ?strin
         throw new RuntimeException('Lejohen vetëm imazhe JPG, PNG ose WEBP.');
     }
 
-    ensure_product_upload_dir();
+    ensure_safe_upload_dir($targetDir);
 
     $extension = $allowed[$mime];
     $slug = slugify_filename($baseName);
-    $dir = product_upload_dir();
-
     $filename = $slug . '.' . $extension;
-    $target = $dir . '/' . $filename;
+    $target = $targetDir . '/' . $filename;
     $counter = 2;
 
     while (file_exists($target)) {
         $filename = $slug . '-' . $counter . '.' . $extension;
-        $target = $dir . '/' . $filename;
+        $target = $targetDir . '/' . $filename;
         $counter++;
     }
 
@@ -120,5 +144,41 @@ function handle_product_image_upload(string $fieldName, string $baseName, ?strin
 
     chmod($target, 0644);
 
-    return public_product_upload_path($filename);
+    return $publicPathResolver($filename);
+}
+
+function handle_product_image_upload(string $fieldName, string $baseName, ?string $currentPath = null): ?string
+{
+    return handle_image_upload(
+        $fieldName,
+        $baseName,
+        product_upload_dir(),
+        'public_product_upload_path',
+        PRODUCT_UPLOAD_MAX_BYTES,
+        $currentPath
+    );
+}
+
+function handle_category_icon_upload(string $fieldName, string $baseName, ?string $currentPath = null): ?string
+{
+    return handle_image_upload(
+        $fieldName,
+        $baseName,
+        category_upload_dir(),
+        'public_category_upload_path',
+        CATEGORY_UPLOAD_MAX_BYTES,
+        $currentPath
+    );
+}
+
+function ensure_category_icon_image_column(PDO $pdo): void
+{
+    $stmt = $pdo->query("SHOW COLUMNS FROM categories LIKE 'icon_image_path'");
+    $exists = $stmt !== false && $stmt->fetch() !== false;
+
+    if ($exists) {
+        return;
+    }
+
+    $pdo->exec("ALTER TABLE categories ADD COLUMN icon_image_path VARCHAR(255) NULL AFTER icon");
 }

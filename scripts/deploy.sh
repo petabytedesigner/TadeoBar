@@ -19,7 +19,7 @@ if [ -z "${FTP_HOST:-}" ] || [ -z "${FTP_USER:-}" ] || [ -z "${FTP_PASS:-}" ]; t
 fi
 
 echo "Deploying $LOCAL_DIR to $FTP_HOST:$REMOTE_DIR"
-echo "Preserving uploaded product images on server..."
+echo "Preserving uploaded product and category images on server..."
 
 lftp -u "$FTP_USER","$FTP_PASS" "$FTP_HOST" <<LFTP
 set cmd:fail-exit yes
@@ -32,6 +32,10 @@ mirror -R --delete --verbose --no-perms \
   --exclude-glob uploads/products/*.jpeg \
   --exclude-glob uploads/products/*.png \
   --exclude-glob uploads/products/*.webp \
+  --exclude-glob uploads/categories/*.jpg \
+  --exclude-glob uploads/categories/*.jpeg \
+  --exclude-glob uploads/categories/*.png \
+  --exclude-glob uploads/categories/*.webp \
   "$LOCAL_DIR"/ "$REMOTE_DIR"/
 bye
 LFTP
