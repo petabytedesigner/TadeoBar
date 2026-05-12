@@ -1051,3 +1051,342 @@ svg {
 }
 
 /* FINAL PUBLIC MOBILE QR FIX END */
+
+/* PUBLIC VISUAL POLISH V1 START */
+
+/* Overall premium depth */
+.site-shell {
+    padding-top: 14px !important;
+}
+
+.hero {
+    min-height: 560px !important;
+    border-radius: 34px !important;
+    border-color: rgba(243, 201, 109, .28) !important;
+    box-shadow:
+        0 34px 110px rgba(0, 0, 0, .68),
+        inset 0 1px 0 rgba(255, 255, 255, .06) !important;
+}
+
+.topbar {
+    padding: 10px 12px 18px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, .075) !important;
+}
+
+.brand-text-only strong {
+    font-size: 36px !important;
+    letter-spacing: .3px !important;
+}
+
+.brand-text-only small {
+    margin-top: 7px !important;
+    letter-spacing: 4px !important;
+}
+
+/* Hero typography */
+.hero-grid {
+    margin-top: 82px !important;
+    align-items: center !important;
+}
+
+.eyebrow {
+    font-size: 32px !important;
+}
+
+.hero-copy h1 {
+    font-size: clamp(76px, 9vw, 118px) !important;
+    letter-spacing: -3.5px !important;
+}
+
+.hero-text {
+    max-width: 620px !important;
+    color: rgba(248, 241, 231, .86) !important;
+    font-size: 19px !important;
+}
+
+.hero-line {
+    margin-top: 30px !important;
+}
+
+/* WiFi card */
+.wifi-card {
+    transform: translateY(10px) !important;
+    border-radius: 30px !important;
+    padding: 26px !important;
+}
+
+.wifi-card h2 {
+    font-family: Georgia, serif !important;
+    font-size: 31px !important;
+    color: var(--gold-light) !important;
+}
+
+.wifi-fields {
+    gap: 12px !important;
+}
+
+.wifi-fields div {
+    border-radius: 18px !important;
+    padding: 15px 16px !important;
+}
+
+.wifi-fields small {
+    text-transform: uppercase !important;
+    letter-spacing: 1.8px !important;
+}
+
+.wifi-buttons {
+    gap: 12px !important;
+}
+
+.primary-button,
+.ghost-button {
+    min-height: 50px !important;
+    border-radius: 16px !important;
+}
+
+/* Category navigation */
+.category-nav {
+    gap: 12px !important;
+    padding: 18px 20px !important;
+}
+
+.category-nav::-webkit-scrollbar {
+    height: 7px;
+}
+
+.category-nav::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, .04);
+}
+
+.category-nav::-webkit-scrollbar-thumb {
+    background: rgba(243, 201, 109, .35);
+    border-radius: 999px;
+}
+
+.category-pill {
+    min-height: 50px !important;
+    padding: 9px 17px 9px 9px !important;
+    border-color: rgba(255, 255, 255, .08) !important;
+    background:
+        linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.035)) !important;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .22) !important;
+}
+
+.category-pill.active {
+    border-color: rgba(243, 201, 109, .55) !important;
+    background:
+        radial-gradient(circle at 18% 0%, rgba(243, 201, 109, .22), transparent 38%),
+        linear-gradient(180deg, rgba(217,164,65,.14), rgba(255,255,255,.035)) !important;
+}
+
+.pill-icon {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 14px !important;
+}
+
+/* Sections */
+.menu-content {
+    padding: 24px !important;
+}
+
+.menu-section {
+    margin-bottom: 42px !important;
+}
+
+.section-head {
+    margin-bottom: 18px !important;
+}
+
+.section-icon {
+    width: 58px !important;
+    height: 58px !important;
+    border-radius: 20px !important;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, .24) !important;
+}
+
+.section-head h2 {
+    font-family: Georgia, serif !important;
+    color: var(--gold-light) !important;
+    font-size: 30px !important;
+}
+
+.section-head p {
+    color: rgba(189, 179, 166, .9) !important;
+}
+
+.section-head a {
+    border-radius: 14px !important;
+}
+
+/* Product cards */
+.product-grid {
+    gap: 18px !important;
+}
+
+.product-card {
+    border-radius: 24px !important;
+    border-color: rgba(255,255,255,.095) !important;
+    background:
+        radial-gradient(circle at 18% 0%, rgba(243, 201, 109, .10), transparent 34%),
+        linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.025)) !important;
+    box-shadow:
+        0 20px 55px rgba(0,0,0,.28),
+        inset 0 1px 0 rgba(255,255,255,.05) !important;
+}
+
+.product-card:hover {
+    transform: translateY(-4px) !important;
+    border-color: rgba(243, 201, 109, .40) !important;
+}
+
+.product-media {
+    height: 168px !important;
+}
+
+.product-placeholder {
+    background:
+        radial-gradient(circle at 32% 18%, rgba(243, 201, 109, .23), transparent 34%),
+        radial-gradient(circle at 78% 84%, rgba(243, 201, 109, .10), transparent 28%),
+        linear-gradient(135deg, rgba(255,255,255,.04), rgba(255,255,255,.015)) !important;
+}
+
+.product-placeholder svg {
+    width: 64px !important;
+    height: 64px !important;
+}
+
+.product-body {
+    padding: 15px !important;
+}
+
+.product-body small {
+    letter-spacing: 1px !important;
+}
+
+.product-body h3 {
+    font-size: 17px !important;
+}
+
+.product-body strong {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: fit-content !important;
+    padding: 8px 11px !important;
+    border-radius: 999px !important;
+    border: 1px solid rgba(243, 201, 109, .25) !important;
+    background: rgba(243, 201, 109, .09) !important;
+}
+
+/* Footer */
+.site-footer {
+    padding: 20px 0 12px !important;
+    border-top: 1px solid rgba(255,255,255,.075) !important;
+}
+
+/* Mobile polish */
+@media (max-width: 980px) {
+    .hero {
+        min-height: auto !important;
+        border-radius: 28px !important;
+    }
+
+    .topbar {
+        padding: 4px 0 14px !important;
+    }
+
+    .hero-grid {
+        margin-top: 50px !important;
+    }
+
+    .brand-text-only strong {
+        font-size: 31px !important;
+    }
+
+    .hero-copy h1 {
+        font-size: clamp(58px, 16vw, 86px) !important;
+        letter-spacing: -2px !important;
+    }
+
+    .hero-text {
+        font-size: 17px !important;
+    }
+
+    .wifi-card {
+        transform: none !important;
+    }
+
+    .menu-content {
+        padding: 15px !important;
+    }
+
+    .section-head h2 {
+        font-size: 24px !important;
+    }
+
+    .product-card {
+        border-radius: 22px !important;
+    }
+
+    .product-media {
+        height: 100% !important;
+    }
+
+    .product-placeholder svg {
+        width: 48px !important;
+        height: 48px !important;
+    }
+}
+
+@media (max-width: 430px) {
+    .site-shell {
+        padding: 8px !important;
+    }
+
+    .hero {
+        padding: 18px !important;
+    }
+
+    .brand-text-only strong {
+        font-size: 28px !important;
+    }
+
+    .brand-text-only small {
+        font-size: 10px !important;
+        letter-spacing: 2.8px !important;
+    }
+
+    .language-switch button {
+        padding: 8px 10px !important;
+    }
+
+    .hero-copy h1 {
+        font-size: 56px !important;
+    }
+
+    .wifi-card {
+        padding: 20px !important;
+    }
+
+    .wifi-card h2 {
+        font-size: 25px !important;
+    }
+
+    .category-pill {
+        min-height: 47px !important;
+    }
+
+    .pill-icon {
+        width: 35px !important;
+        height: 35px !important;
+    }
+
+    .product-card {
+        grid-template-columns: 108px minmax(0, 1fr) !important;
+    }
+}
+
+/* PUBLIC VISUAL POLISH V1 END */
+
