@@ -78,28 +78,30 @@ $flash = (string)($_GET['msg'] ?? '');
 </head>
 <body>
     <div class="admin-layout">
+
         <header class="admin-header">
             <div>
                 <div class="admin-brand">Tadeo Bar</div>
-                <div class="admin-muted">I loguar si <?= e($admin['username']) ?></div>
+                <div class="admin-muted">I identifikuar si <?= e($admin['username']) ?></div>
             </div>
-
-            <nav class="admin-nav">
-                <a href="/tadeo-admin/dashboard.php">Paneli</a>
-                <a class="active" href="/tadeo-admin/products.php">Produktet</a>
-                <a href="#">Kategoritë</a>
-                <a href="#">Imazhet</a>
-                <a href="#">WiFi</a>
-                <a href="#">Analitika</a>
-                <a href="#">Cilësimet</a>
-                <a href="/tadeo-admin/logout.php">Dil</a>
-            </nav>
+            <a class="logout-top" href="/tadeo-admin/logout.php">Dil</a>
         </header>
+
+        <nav class="admin-nav">
+            <a  href="/tadeo-admin/dashboard.php">Paneli</a>
+            <a class="active" href="/tadeo-admin/products.php">Produktet</a>
+            <a  href="#">Kategoritë</a>
+            <a  href="#">Imazhet</a>
+            <a  href="#">WiFi</a>
+            <a  href="#">Analitika</a>
+            <a  href="#">Cilësimet</a>
+        </nav>
+
 
         <main>
             <h1 class="admin-title">Produktet</h1>
             <p class="admin-muted">
-                Menaxho emrat, çmimet, kategoritë, dukshmërinë dhe imazhet e produkteve.
+                Menaxho emrat, çmimet, kategoritë, statusin dhe imazhet e produkteve.
             </p>
 
             <?php if ($flash !== ''): ?>
@@ -108,7 +110,7 @@ $flash = (string)($_GET['msg'] ?? '');
 
             <section class="grid">
                 <article class="stat-card">
-                    <small>Total produkte</small>
+                    <small>Totali i produkteve</small>
                     <strong><?= e($totalProducts) ?></strong>
                 </article>
                 <article class="stat-card">
@@ -120,7 +122,7 @@ $flash = (string)($_GET['msg'] ?? '');
                     <strong><?= e($hiddenProducts) ?></strong>
                 </article>
                 <article class="stat-card">
-                    <small>Në këtë pamje</small>
+                    <small>Të shfaqura këtu</small>
                     <strong><?= e(count($products)) ?></strong>
                 </article>
             </section>
@@ -170,6 +172,12 @@ $flash = (string)($_GET['msg'] ?? '');
                                 <span class="badge badge-hidden">I fshehur</span>
                             <?php endif; ?>
                         </div>
+
+                        <?php if (!empty($product['image_path'])): ?>
+                            <div class="product-thumb">
+                                <img src="/<?= e($product['image_path']) ?>" alt="<?= e($product['name_sq']) ?>">
+                            </div>
+                        <?php endif; ?>
 
                         <h3><?= e($product['name_sq']) ?></h3>
                         <p><?= e($product['name_en']) ?></p>

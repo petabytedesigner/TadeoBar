@@ -8,7 +8,7 @@ require_admin();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !csrf_verify()) {
     http_response_code(403);
-    exit('E ndaluar.');
+    exit('Forbidden.');
 }
 
 $id = (int)($_POST['id'] ?? 0);

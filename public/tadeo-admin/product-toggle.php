@@ -8,7 +8,7 @@ require_admin();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !csrf_verify()) {
     http_response_code(403);
-    exit('E ndaluar.');
+    exit('Forbidden.');
 }
 
 $id = (int)($_POST['id'] ?? 0);
@@ -21,4 +21,4 @@ if ($id <= 0) {
 $stmt = db()->prepare("UPDATE products SET is_active = ? WHERE id = ?");
 $stmt->execute([$isActive === 1 ? 1 : 0, $id]);
 
-redirect('/tadeo-admin/products.php?msg=Produkti u përditësua');
+redirect('/tadeo-admin/products.php?msg=Statusi i produktit u përditësua');

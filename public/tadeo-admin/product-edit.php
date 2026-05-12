@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/csrf.php';
+require_once __DIR__ . '/../includes/upload.php';
 
 $admin = require_admin();
 $pdo = db();
@@ -14,7 +15,7 @@ if ($id <= 0) {
 }
 
 $categories = $pdo->query("
-    SELECT id, name_sq
+    SELECT id, name_sq, name_en
     FROM categories
     WHERE is_active = 1
     ORDER BY sort_order, id
@@ -40,7 +41,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'name_sq' => trim((string)($_POST['name_sq'] ?? '')),
             'name_en' => trim((string)($_POST['name_en'] ?? '')),
             'price_all' => (int)($_POST['price_all'] ?? 0),
-            'image_path' => trim((string)($_POST['image_path'] ?? '')),
             'sort_order' => (int)($_POST['sort_order'] ?? 0),
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
         ];
@@ -49,6 +49,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Plotëso saktë të gjitha fushat e detyrueshme.';
         } else {
             try {
+                $imagePath = handle_product_image_upload(
+                    'image_file',
+                    $data['name_en'] !== '' ? $data['name_en'] : $data['name_sq'],
+                    $product['image_path'] ?? null
+                );
+
                 $stmt = $pdo->prepare("
                     UPDATE products
                     SET
@@ -69,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $data['name_sq'],
                     $data['name_en'],
                     $data['price_all'],
-                    $data['image_path'] !== '' ? $data['image_path'] : null,
+                    $imagePath,
                     $data['is_active'],
                     $data['sort_order'],
                     $id,
@@ -77,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 redirect('/tadeo-admin/products.php?msg=Produkti u përditësua');
             } catch (Throwable $e) {
-                $error = 'Produkti nuk u përditësua. Kontrollo nëse numri i produktit ekziston tashmë.';
+                $error = 'Produkti nuk u përditësua: ' . $e->getMessage();
             }
         }
     }
@@ -95,18 +101,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
     <div class="admin-layout">
+
         <header class="admin-header">
             <div>
                 <div class="admin-brand">Tadeo Bar</div>
-                <div class="admin-muted">I loguar si <?= e($admin['username']) ?></div>
+                <div class="admin-muted">I identifikuar si <?= e($admin['username']) ?></div>
             </div>
-
-            <nav class="admin-nav">
-                <a href="/tadeo-admin/dashboard.php">Paneli</a>
-                <a class="active" href="/tadeo-admin/products.php">Produktet</a>
-                <a href="/tadeo-admin/logout.php">Dil</a>
-            </nav>
+            <a class="logout-top" href="/tadeo-admin/logout.php">Dil</a>
         </header>
+
+        <nav class="admin-nav">
+            <a  href="/tadeo-admin/dashboard.php">Paneli</a>
+            <a class="active" href="/tadeo-admin/products.php">Produktet</a>
+            <a  href="#">Kategoritë</a>
+            <a  href="#">Imazhet</a>
+            <a  href="#">WiFi</a>
+            <a  href="#">Analitika</a>
+            <a  href="#">Cilësimet</a>
+        </nav>
+
 
         <main>
             <h1 class="admin-title">Ndrysho produkt</h1>
@@ -116,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="error"><?= e($error) ?></div>
             <?php endif; ?>
 
-            <form class="form-card" method="post">
+            <form class="form-card" method="post" enctype="multipart/form-data">
                 <?= csrf_field() ?>
                 <input type="hidden" name="id" value="<?= e($id) ?>">
 
@@ -158,8 +171,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <div class="full">
-                        <label>Path i imazhit</label>
-                        <input name="image_path" value="<?= e($product['image_path'] ?? '') ?>" placeholder="uploads/products/example.webp">
+                        <label>Ngarko / zëvendëso imazhin</label>
+                        <input name="image_file" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+                        <div class="help-text">Nëse nuk zgjedh imazh të ri, imazhi aktual mbetet i pandryshuar. Lejohen JPG, PNG ose WEBP, maksimumi 2 MB.</div>
+
+                        <?php if (!empty($product['image_path'])): ?>
+                            <div class="current-image">
+                                <img src="/<?= e($product['image_path']) ?>" alt="<?= e($product['name_sq']) ?>">
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
 

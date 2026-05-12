@@ -24,23 +24,25 @@ $last7 = (int)$pdo->query("SELECT COUNT(*) FROM visits WHERE visit_date >= DATE_
 </head>
 <body>
     <div class="admin-layout">
+
         <header class="admin-header">
             <div>
                 <div class="admin-brand">Tadeo Bar</div>
-                <div class="admin-muted">I loguar si <?= e($admin['username']) ?></div>
+                <div class="admin-muted">I identifikuar si <?= e($admin['username']) ?></div>
             </div>
-
-            <nav class="admin-nav">
-                <a class="active" href="/tadeo-admin/dashboard.php">Paneli</a>
-                <a href="/tadeo-admin/products.php">Produktet</a>
-                <a href="#">Kategoritë</a>
-                <a href="#">Imazhet</a>
-                <a href="#">WiFi</a>
-                <a href="#">Analitika</a>
-                <a href="#">Cilësimet</a>
-                <a href="/tadeo-admin/logout.php">Dil</a>
-            </nav>
+            <a class="logout-top" href="/tadeo-admin/logout.php">Dil</a>
         </header>
+
+        <nav class="admin-nav">
+            <a class="active" href="/tadeo-admin/dashboard.php">Paneli</a>
+            <a  href="/tadeo-admin/products.php">Produktet</a>
+            <a  href="#">Kategoritë</a>
+            <a  href="#">Imazhet</a>
+            <a  href="#">WiFi</a>
+            <a  href="#">Analitika</a>
+            <a  href="#">Cilësimet</a>
+        </nav>
+
 
         <main>
             <h1 class="admin-title">Paneli</h1>
@@ -79,9 +81,9 @@ $last7 = (int)$pdo->query("SELECT COUNT(*) FROM visits WHERE visit_date >= DATE_
             </section>
 
             <section class="panel">
-                <h2>Modulet e radhës</h2>
+                <h2>Hapat e radhës</h2>
                 <p class="admin-muted">
-                    Produktet, kategoritë, imazhet, WiFi, analitika dhe cilësimet do lidhen hap pas hapi.
+                    Produktet janë lidhur me databazën. Më pas vazhdojmë me kategoritë, imazhet, WiFi, analitikën dhe cilësimet.
                 </p>
             </section>
         </main>
