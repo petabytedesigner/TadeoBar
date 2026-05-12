@@ -176,14 +176,14 @@ $flash = (string)($_GET['msg'] ?? '');
                                 <input type="hidden" name="id" value="<?= e($product['id']) ?>">
                                 <input type="hidden" name="is_active" value="<?= (int)$product['is_active'] === 1 ? '0' : '1' ?>">
                                 <button type="submit" class="btn-secondary">
-                                    <?= (int)$product['is_active'] === 1 ? 'Fshih' : 'Shfaq' ?>
+                                    <?= (int)$product['is_active'] === 1 ? 'Fshih nga menuja' : 'Shfaq në menu' ?>
                                 </button>
                             </form>
 
-                            <form method="post" action="/tadeo-admin/product-delete.php" onsubmit="return confirm('Je i sigurt që do ta fshish këtë produkt përgjithmonë?');">
+                            <form method="post" action="/tadeo-admin/product-delete.php" onsubmit="return confirm('Je i sigurt që do ta fshish këtë produkt përgjithmonë? Ky veprim nuk kthehet pas.');">
                                 <?= csrf_field() ?>
                                 <input type="hidden" name="id" value="<?= e($product['id']) ?>">
-                                <button type="submit" class="btn-danger">Fshi</button>
+                                <button type="submit" class="btn-danger">Fshi përgjithmonë</button>
                             </form>
                         </div>
                     </article>
