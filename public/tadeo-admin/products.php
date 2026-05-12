@@ -79,8 +79,6 @@ $flash = (string)($_GET['msg'] ?? '');
 </head>
 <body>
     <div class="admin-layout">
-
-        
         <?php render_admin_header($admin, 'products'); ?>
 
         <main>

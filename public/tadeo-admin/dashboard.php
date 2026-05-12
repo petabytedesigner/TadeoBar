@@ -25,8 +25,6 @@ $last7 = (int)$pdo->query("SELECT COUNT(*) FROM visits WHERE visit_date >= DATE_
 </head>
 <body>
     <div class="admin-layout">
-
-        
         <?php render_admin_header($admin, 'dashboard'); ?>
 
         <main>
