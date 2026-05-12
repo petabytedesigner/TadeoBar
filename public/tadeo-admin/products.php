@@ -75,7 +75,7 @@ $flash = (string)($_GET['msg'] ?? '');
     <meta charset="utf-8">
     <title>Produktet | Tadeo Bar Admin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-logout-final-1">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-delete-modal-2">
 </head>
 <body>
     <div class="admin-layout">
@@ -180,15 +180,94 @@ $flash = (string)($_GET['msg'] ?? '');
                                 </button>
                             </form>
 
-                            <form method="post" action="/tadeo-admin/product-delete.php" onsubmit="return confirm('Je i sigurt që do ta fshish këtë produkt përgjithmonë? Ky veprim nuk kthehet pas.');">
-                                <?= csrf_field() ?>
-                                <input type="hidden" name="id" value="<?= e($product['id']) ?>">
-                                <button type="submit" class="btn-danger">Fshi përgjithmonë</button>
-                            </form>
+                            <button
+                                type="button"
+                                class="btn-danger js-delete-product"
+                                data-product-id="<?= e($product['id']) ?>"
+                                data-product-name="<?= e($product['name_sq']) ?>"
+                            >
+                                Fshi përgjithmonë
+                            </button>
                         </div>
                     </article>
                 <?php endforeach; ?>
             </section>
+
+            <div class="modal-backdrop" id="deleteProductModal" hidden>
+                <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="deleteProductTitle">
+                    <h2 id="deleteProductTitle">Fshi produktin?</h2>
+                    <p>
+                        Je i sigurt që do ta fshish përgjithmonë këtë produkt?
+                        Ky veprim nuk kthehet pas.
+                    </p>
+
+                    <div class="modal-product-name" id="deleteProductName"></div>
+
+                    <form method="post" action="/tadeo-admin/product-delete.php">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="id" id="deleteProductId" value="">
+
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary" id="deleteProductCancel">
+                                Anulo
+                            </button>
+
+                            <button type="submit" class="btn-danger">
+                                Fshi përgjithmonë
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <script>
+                (function () {
+                    const modal = document.getElementById('deleteProductModal');
+                    const productIdInput = document.getElementById('deleteProductId');
+                    const productName = document.getElementById('deleteProductName');
+                    const cancelButton = document.getElementById('deleteProductCancel');
+
+                    if (!modal || !productIdInput || !productName || !cancelButton) {
+                        return;
+                    }
+
+                    function openModal(button) {
+                        productIdInput.value = button.dataset.productId || '';
+                        productName.textContent = button.dataset.productName || 'Produkti';
+                        modal.hidden = false;
+                        document.body.classList.add('modal-open');
+                        cancelButton.focus();
+                    }
+
+                    function closeModal() {
+                        modal.hidden = true;
+                        productIdInput.value = '';
+                        productName.textContent = '';
+                        document.body.classList.remove('modal-open');
+                    }
+
+                    document.querySelectorAll('.js-delete-product').forEach(function (button) {
+                        button.addEventListener('click', function () {
+                            openModal(button);
+                        });
+                    });
+
+                    cancelButton.addEventListener('click', closeModal);
+
+                    modal.addEventListener('click', function (event) {
+                        if (event.target === modal) {
+                            closeModal();
+                        }
+                    });
+
+                    document.addEventListener('keydown', function (event) {
+                        if (!modal.hidden && event.key === 'Escape') {
+                            closeModal();
+                        }
+                    });
+                })();
+            </script>
+
         </main>
     </div>
 </body>

@@ -534,3 +534,82 @@ button,
 }
 /* FINAL ADMIN HEADER OVERRIDE END */
 
+
+/* Product delete modal */
+body.modal-open {
+    overflow: hidden;
+}
+
+.modal-backdrop[hidden] {
+    display: none !important;
+}
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    background: rgba(0, 0, 0, .74);
+    backdrop-filter: blur(7px);
+}
+
+.modal-card {
+    width: min(100%, 460px);
+    padding: 24px;
+    border-radius: 24px;
+    border: 1px solid rgba(243, 201, 109, .32);
+    background:
+        radial-gradient(circle at 20% 0%, rgba(217, 164, 65, .16), transparent 30%),
+        #111;
+    box-shadow: 0 28px 90px rgba(0, 0, 0, .65);
+}
+
+.modal-card h2 {
+    margin: 0 0 12px;
+    color: var(--gold-light);
+    font-family: Georgia, serif;
+    font-size: 30px;
+}
+
+.modal-card p {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.55;
+    font-size: 16px;
+}
+
+.modal-product-name {
+    margin-top: 16px;
+    padding: 13px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, .1);
+    background: rgba(255, 255, 255, .045);
+    color: var(--text);
+    font-weight: 900;
+}
+
+.modal-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.modal-actions .btn,
+.modal-actions button {
+    width: 100%;
+    margin: 0;
+}
+
+@media (max-width: 480px) {
+    .modal-card {
+        padding: 20px;
+        border-radius: 22px;
+    }
+
+    .modal-actions {
+        grid-template-columns: 1fr;
+    }
+}

@@ -21,7 +21,7 @@ $last7 = (int)$pdo->query("SELECT COUNT(*) FROM visits WHERE visit_date >= DATE_
     <meta charset="utf-8">
     <title>Paneli | Tadeo Bar Admin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-logout-final-1">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-delete-modal-2">
 </head>
 <body>
     <div class="admin-layout">
