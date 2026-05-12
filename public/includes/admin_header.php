@@ -20,7 +20,10 @@ function render_admin_header(array $admin, string $active): void
                 <div class="admin-muted">I identifikuar si <?= e($admin['username'] ?? '') ?></div>
             </div>
 
-            <a class="admin-logout-button" href="/tadeo-admin/logout.php" aria-label="Dil nga paneli">Dil</a>
+            <div class="admin-header-actions">
+                <a class="admin-view-menu-button" href="/" target="_blank" rel="noopener">Menuja</a>
+                <a class="admin-logout-button" href="/tadeo-admin/logout.php" aria-label="Dil nga paneli">Dil</a>
+            </div>
         </div>
 
         <nav class="admin-nav" aria-label="Menuja e administrimit">
