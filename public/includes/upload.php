@@ -130,12 +130,11 @@ function handle_image_upload(
     $slug = slugify_filename($baseName);
     $filename = $slug . '.' . $extension;
     $target = $targetDir . '/' . $filename;
-    $counter = 2;
+    $publicPath = $publicPathResolver($filename);
+    $currentPath = $currentPath !== null ? ltrim((string)$currentPath, '/') : null;
 
-    while (file_exists($target)) {
-        $filename = $slug . '-' . $counter . '.' . $extension;
-        $target = $targetDir . '/' . $filename;
-        $counter++;
+    if (file_exists($target) && $currentPath !== $publicPath) {
+        throw new RuntimeException('Ekziston tashmë një imazh me këtë emër. Fshi imazhin e palidhur ose ndrysho emrin përpara ngarkimit.');
     }
 
     if (!move_uploaded_file($tmpName, $target)) {
@@ -144,7 +143,7 @@ function handle_image_upload(
 
     chmod($target, 0644);
 
-    return $publicPathResolver($filename);
+    return $publicPath;
 }
 
 function handle_product_image_upload(string $fieldName, string $baseName, ?string $currentPath = null): ?string
