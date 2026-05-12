@@ -2,3 +2,6 @@
 *.log
 .DS_Store
 Thumbs.db
+public/includes/config.local.php
+public/db-test.php
+public/setup.php
