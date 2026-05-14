@@ -257,8 +257,18 @@ $wifiPayload = public_wifi_payload($settings['wifi_ssid'], $settings['wifi_passw
             <?php endif; ?>
 
             <nav class="category-nav" aria-label="Kategoritë">
+                <?php
+                    $allCategoryImagePath = __DIR__ . '/assets/images/categories/all.webp';
+                    $allCategoryImage = is_file($allCategoryImagePath) ? '/assets/images/categories/all.webp' : null;
+                ?>
                 <button class="category-pill active" type="button" data-filter="all">
-                    <span class="pill-icon"><?= public_svg_icon('drink') ?></span>
+                    <span class="pill-icon">
+                        <?php if ($allCategoryImage !== null): ?>
+                            <img src="<?= e($allCategoryImage) ?>" alt="<?= e($defaultLang === 'sq' ? 'Të gjitha' : 'All') ?>">
+                        <?php else: ?>
+                            <?= public_svg_icon('drink') ?>
+                        <?php endif; ?>
+                    </span>
                     <span data-sq="Të gjitha" data-en="All"><?= $defaultLang === 'sq' ? 'Të gjitha' : 'All' ?></span>
                 </button>
 
