@@ -16,3 +16,26 @@ ErrorDocument 501 /system-pages/501.html
 ErrorDocument 502 /system-pages/502.html
 ErrorDocument 503 /system-pages/503.html
 ErrorDocument 504 /system-pages/504.html
+
+# STATIC ASSET CACHE START
+<IfModule mod_expires.c>
+    ExpiresActive On
+
+    ExpiresByType image/webp "access plus 30 days"
+    ExpiresByType image/png "access plus 30 days"
+    ExpiresByType image/jpeg "access plus 30 days"
+    ExpiresByType image/x-icon "access plus 30 days"
+    ExpiresByType image/svg+xml "access plus 30 days"
+
+    ExpiresByType text/css "access plus 30 days"
+    ExpiresByType application/javascript "access plus 30 days"
+    ExpiresByType text/javascript "access plus 30 days"
+</IfModule>
+
+<IfModule mod_headers.c>
+    <FilesMatch "\.(webp|png|jpg|jpeg|ico|svg|css|js)$">
+        Header set Cache-Control "public, max-age=2592000"
+    </FilesMatch>
+</IfModule>
+# STATIC ASSET CACHE END
+

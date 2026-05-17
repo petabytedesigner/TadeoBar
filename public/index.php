@@ -188,6 +188,7 @@ $wifiPayload = public_wifi_payload($settings['wifi_ssid'], $settings['wifi_passw
     <title><?= e($barName) ?> | Menu</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#070707">
+    <link rel="icon" href="/favicon.ico">
     <meta name="description" content="<?= e($barName) ?> digital menu and WiFi access.">
     <link rel="stylesheet" href="/assets/css/public-menu.css?v=20260512-public-polish-v1">
 </head>
@@ -338,7 +339,8 @@ $wifiPayload = public_wifi_payload($settings['wifi_ssid'], $settings['wifi_passw
                                     <article class="product-card" data-section="<?= e($category['slug']) ?>">
                                         <div class="product-media">
                                             <?php if ($productImage !== null): ?>
-                                                <img src="<?= e($productImage) ?>" alt="<?= e($productTitle) ?>">
+                                                <img class="product-media-bg" src="<?= e($productImage) ?>" alt="" aria-hidden="true" loading="lazy" decoding="async">
+                                                <img class="product-media-main" src="<?= e($productImage) ?>" alt="<?= e($productTitle) ?>" loading="lazy" decoding="async">
                                             <?php else: ?>
                                                 <div class="product-placeholder">
                                                     <?= public_svg_icon($iconKey) ?>
