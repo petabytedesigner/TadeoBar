@@ -144,6 +144,9 @@ try {
     $hasCategoryImages = public_table_column_exists($pdo, 'categories', 'icon_image_path');
     $categoryImageSelect = $hasCategoryImages ? 'icon_image_path' : 'NULL AS icon_image_path';
 
+    $hasProductDeletedAt = public_table_column_exists($pdo, 'products', 'deleted_at');
+    $productDeletedWhere = $hasProductDeletedAt ? 'AND p.deleted_at IS NULL' : '';
+
     $categories = $pdo->query(
         "SELECT id, slug, name_sq, name_en, {$categoryImageSelect}, sort_order
          FROM categories
@@ -163,7 +166,7 @@ try {
             p.sort_order
          FROM products p
          INNER JOIN categories c ON c.id = p.category_id
-         WHERE p.is_active = 1 AND c.is_active = 1
+         WHERE p.is_active = 1 AND c.is_active = 1 {$productDeletedWhere}
          ORDER BY c.sort_order, p.sort_order, p.menu_number, p.id"
     )->fetchAll();
 

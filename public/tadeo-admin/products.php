@@ -8,6 +8,18 @@ require_once __DIR__ . '/../includes/admin_header.php';
 $admin = require_admin();
 $pdo = db();
 
+function ensure_product_trash_column(PDO $pdo): void
+{
+    $stmt = $pdo->query("SHOW COLUMNS FROM products LIKE 'deleted_at'");
+    $exists = $stmt !== false && $stmt->fetch() !== false;
+
+    if (!$exists) {
+        $pdo->exec("ALTER TABLE products ADD COLUMN deleted_at TIMESTAMP NULL DEFAULT NULL AFTER updated_at");
+    }
+}
+
+ensure_product_trash_column($pdo);
+
 $q = trim((string)($_GET['q'] ?? ''));
 $categoryId = (int)($_GET['category_id'] ?? 0);
 $status = (string)($_GET['status'] ?? 'all');
@@ -19,7 +31,7 @@ $categories = $pdo->query("
     ORDER BY sort_order, id
 ")->fetchAll();
 
-$where = ['1 = 1'];
+$where = ['p.deleted_at IS NULL'];
 $params = [];
 
 if ($q !== '') {
@@ -63,9 +75,10 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $products = $stmt->fetchAll();
 
-$activeProducts = (int)$pdo->query("SELECT COUNT(*) FROM products WHERE is_active = 1")->fetchColumn();
-$hiddenProducts = (int)$pdo->query("SELECT COUNT(*) FROM products WHERE is_active = 0")->fetchColumn();
-$totalProducts = (int)$pdo->query("SELECT COUNT(*) FROM products")->fetchColumn();
+$activeProducts = (int)$pdo->query("SELECT COUNT(*) FROM products WHERE is_active = 1 AND deleted_at IS NULL")->fetchColumn();
+$hiddenProducts = (int)$pdo->query("SELECT COUNT(*) FROM products WHERE is_active = 0 AND deleted_at IS NULL")->fetchColumn();
+$deletedProducts = (int)$pdo->query("SELECT COUNT(*) FROM products WHERE deleted_at IS NOT NULL")->fetchColumn();
+$totalProducts = (int)$pdo->query("SELECT COUNT(*) FROM products WHERE deleted_at IS NULL")->fetchColumn();
 
 $flash = (string)($_GET['msg'] ?? '');
 ?>
@@ -105,6 +118,10 @@ $flash = (string)($_GET['msg'] ?? '');
                     <strong><?= e($hiddenProducts) ?></strong>
                 </article>
                 <article class="stat-card">
+                    <small>Në kosh</small>
+                    <strong><?= e($deletedProducts) ?></strong>
+                </article>
+                <article class="stat-card">
                     <small>Të shfaqura këtu</small>
                     <strong><?= e(count($products)) ?></strong>
                 </article>
@@ -140,8 +157,9 @@ $flash = (string)($_GET['msg'] ?? '');
                 <button type="submit">Filtro</button>
             </form>
 
-            <p>
+            <p style="display:flex; gap:10px; flex-wrap:wrap">
                 <a class="btn" style="width:auto" href="/tadeo-admin/product-create.php">+ Shto produkt</a>
+                <a class="btn btn-secondary" style="width:auto" href="/tadeo-admin/product-trash.php">Produktet e fshira</a>
             </p>
 
             <section class="product-grid">
@@ -186,7 +204,7 @@ $flash = (string)($_GET['msg'] ?? '');
                                 data-product-id="<?= e($product['id']) ?>"
                                 data-product-name="<?= e($product['name_sq']) ?>"
                             >
-                                Fshi përgjithmonë
+                                Ço në kosh
                             </button>
                         </div>
                     </article>
@@ -195,10 +213,10 @@ $flash = (string)($_GET['msg'] ?? '');
 
             <div class="modal-backdrop" id="deleteProductModal" hidden>
                 <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="deleteProductTitle">
-                    <h2 id="deleteProductTitle">Fshi produktin?</h2>
+                    <h2 id="deleteProductTitle">Ço produktin në kosh?</h2>
                     <p>
-                        Je i sigurt që do ta fshish përgjithmonë këtë produkt?
-                        Ky veprim nuk kthehet pas.
+                        Je i sigurt që do ta çosh këtë produkt në kosh?
+                        Produkti nuk do të shfaqet në menu, por mund të rikthehet më vonë.
                     </p>
 
                     <div class="modal-product-name" id="deleteProductName"></div>
@@ -213,7 +231,7 @@ $flash = (string)($_GET['msg'] ?? '');
                             </button>
 
                             <button type="submit" class="btn-danger">
-                                Fshi përgjithmonë
+                                Ço në kosh
                             </button>
                         </div>
                     </form>

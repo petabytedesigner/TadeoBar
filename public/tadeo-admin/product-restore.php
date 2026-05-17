@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !csrf_verify()) {
 $id = (int)($_POST['id'] ?? 0);
 
 if ($id <= 0) {
-    redirect('/tadeo-admin/products.php?msg=Produkt%20i%20pavlefshem');
+    redirect('/tadeo-admin/product-trash.php?msg=Produkt%20i%20pavlefshem');
 }
 
 try {
@@ -33,15 +33,15 @@ try {
 
     $stmt = $pdo->prepare("
         UPDATE products
-        SET deleted_at = NOW(),
+        SET deleted_at = NULL,
             is_active = 0
         WHERE id = ?
-          AND deleted_at IS NULL
+          AND deleted_at IS NOT NULL
         LIMIT 1
     ");
     $stmt->execute([$id]);
 
-    redirect('/tadeo-admin/products.php?msg=Produkti%20u%20cua%20ne%20kosh');
+    redirect('/tadeo-admin/product-trash.php?msg=Produkti%20u%20rikthye%20si%20i%20fshehur');
 } catch (Throwable $e) {
-    redirect('/tadeo-admin/products.php?msg=Produkti%20nuk%20u%20fshi');
+    redirect('/tadeo-admin/product-trash.php?msg=Produkti%20nuk%20u%20rikthye');
 }
