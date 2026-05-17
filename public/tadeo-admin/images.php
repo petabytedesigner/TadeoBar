@@ -130,6 +130,9 @@ function flash_message(string $msg): string
     return match ($msg) {
         'detached' => 'Imazhi u hoq nga produkti/kategoria. File-i mbeti në server.',
         'deleted' => 'Imazhi u fshi përgjithmonë.',
+        'attached' => 'Imazhi u lidh me sukses.',
+        'already_used' => 'Ky imazh është tashmë i lidhur me një produkt ose kategori.',
+        'attach_failed' => 'Imazhi nuk u lidh dot. Kontrollo nëse produkti/kategoria ka tashmë imazh.',
         'delete_failed' => 'Lidhja u hoq, por file-i nuk u fshi dot nga serveri.',
         'csrf' => 'Kontrolli i sigurisë dështoi. Rifresko faqen dhe provo përsëri.',
         'invalid' => 'Kërkesa nuk është e vlefshme.',
@@ -375,6 +378,31 @@ $flash = flash_message($msg);
             margin-top: 18px;
         }
 
+
+
+        /* MEDIA ATTACH FIELD START */
+        .media-attach-field {
+            display: grid;
+            gap: 7px;
+        }
+
+        .media-attach-field span {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 900;
+        }
+
+        .media-attach-field select {
+            width: 100%;
+            min-height: 42px;
+            border: 1px solid rgba(255,255,255,.12);
+            border-radius: 12px;
+            padding: 10px;
+            color: var(--text);
+            background: rgba(0,0,0,.30);
+            outline: none;
+        }
+        /* MEDIA ATTACH FIELD END */
 
         /* Images manager compact missing-image sections */
         .media-collapsible {
@@ -818,6 +846,46 @@ $flash = flash_message($msg);
                                 </div>
 
                                 <div class="media-actions">
+                                    <?php if (str_starts_with($info['path'], 'uploads/products/') && $productsWithoutImages !== []): ?>
+                                        <form method="post" action="/tadeo-admin/image-attach.php">
+                                            <?= csrf_field() ?>
+                                            <input type="hidden" name="type" value="product">
+                                            <input type="hidden" name="path" value="<?= e($info['path']) ?>">
+                                            <label class="media-attach-field">
+                                                <span>Lidh me produkt pa imazh</span>
+                                                <select name="id" required>
+                                                    <option value="">Zgjidh produktin</option>
+                                                    <?php foreach ($productsWithoutImages as $product): ?>
+                                                        <option value="<?= e($product['id']) ?>">
+                                                            #<?= e($product['menu_number']) ?> — <?= e($product['name_sq']) ?> / <?= e($product['name_en']) ?>
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </label>
+                                            <button class="btn btn-secondary" type="submit">Lidh me produkt</button>
+                                        </form>
+                                    <?php endif; ?>
+
+                                    <?php if (str_starts_with($info['path'], 'uploads/categories/') && $categoriesWithoutImages !== []): ?>
+                                        <form method="post" action="/tadeo-admin/image-attach.php">
+                                            <?= csrf_field() ?>
+                                            <input type="hidden" name="type" value="category">
+                                            <input type="hidden" name="path" value="<?= e($info['path']) ?>">
+                                            <label class="media-attach-field">
+                                                <span>Lidh me kategori pa imazh</span>
+                                                <select name="id" required>
+                                                    <option value="">Zgjidh kategorinë</option>
+                                                    <?php foreach ($categoriesWithoutImages as $category): ?>
+                                                        <option value="<?= e($category['id']) ?>">
+                                                            <?= e($category['name_sq']) ?> / <?= e($category['name_en']) ?>
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </label>
+                                            <button class="btn btn-secondary" type="submit">Lidh me kategori</button>
+                                        </form>
+                                    <?php endif; ?>
+
                                     <form method="post" action="/tadeo-admin/image-delete.php" class="js-confirm-action"
                                           data-title="Fshi file-in përgjithmonë?"
                                           data-message="Ky file nuk është i lidhur me produkt ose kategori. Fshirja nuk kthehet pas."
