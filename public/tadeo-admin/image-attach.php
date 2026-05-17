@@ -93,6 +93,9 @@ try {
             redirect('/tadeo-admin/images.php?msg=attach_failed');
         }
 
+        $cleanup = $pdo->prepare("DELETE FROM image_detach_history WHERE image_path = ?");
+        $cleanup->execute([$path]);
+
         redirect('/tadeo-admin/images.php?msg=attached');
     }
 
@@ -116,6 +119,9 @@ try {
     if ($stmt->rowCount() !== 1) {
         redirect('/tadeo-admin/images.php?msg=attach_failed');
     }
+
+    $cleanup = $pdo->prepare("DELETE FROM image_detach_history WHERE image_path = ?");
+    $cleanup->execute([$path]);
 
     redirect('/tadeo-admin/images.php?msg=attached');
 } catch (Throwable $e) {

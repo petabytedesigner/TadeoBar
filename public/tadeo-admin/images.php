@@ -125,6 +125,25 @@ function list_uploaded_images(string $folder): array
     return $items;
 }
 
+function ensure_image_detach_history_table(PDO $pdo): void
+{
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS image_detach_history (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            image_path VARCHAR(255) NOT NULL,
+            owner_type VARCHAR(20) NOT NULL,
+            owner_id INT UNSIGNED NOT NULL,
+            menu_number INT UNSIGNED NULL,
+            name_sq VARCHAR(180) NOT NULL,
+            name_en VARCHAR(180) NOT NULL,
+            detached_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY image_path_unique (image_path),
+            KEY owner_lookup (owner_type, owner_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+}
+
 function flash_message(string $msg): string
 {
     return match ($msg) {
@@ -146,8 +165,11 @@ $productImages = [];
 $categoryImages = [];
 $productsWithoutImages = [];
 $categoriesWithoutImages = [];
+$detachHistoryByPath = [];
 
 try {
+    ensure_image_detach_history_table($pdo);
+
     $hasCategoryImageColumn = table_column_exists($pdo, 'categories', 'icon_image_path');
 
     $productImages = $pdo->query(
@@ -176,6 +198,19 @@ try {
          WHERE p.image_path IS NULL OR p.image_path = ''
          ORDER BY p.menu_number, p.id"
     )->fetchAll();
+
+    $detachHistory = $pdo->query("
+        SELECT image_path, owner_type, owner_id, menu_number, name_sq, name_en, detached_at
+        FROM image_detach_history
+        ORDER BY detached_at DESC
+    ")->fetchAll();
+
+    foreach ($detachHistory as $historyItem) {
+        $safePath = image_safe_relative_path($historyItem['image_path'] ?? null);
+        if ($safePath !== null) {
+            $detachHistoryByPath[$safePath] = $historyItem;
+        }
+    }
 
     if ($hasCategoryImageColumn) {
         $categoryImages = $pdo->query(
@@ -379,6 +414,25 @@ $flash = flash_message($msg);
         }
 
 
+
+
+        /* MEDIA PREVIOUS OWNER START */
+        .media-previous-owner {
+            margin-top: 10px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(243, 201, 109, .22);
+            background: rgba(243, 201, 109, .08);
+            color: var(--gold-light);
+            font-size: 13px;
+            line-height: 1.45;
+            font-weight: 800;
+        }
+
+        .media-previous-owner strong {
+            color: var(--text);
+        }
+        /* MEDIA PREVIOUS OWNER END */
 
         /* MEDIA ATTACH FIELD START */
         .media-attach-field {
@@ -821,7 +875,10 @@ $flash = flash_message($msg);
                 <?php else: ?>
                     <div class="product-grid">
                         <?php foreach ($unusedImages as $path): ?>
-                            <?php $info = image_file_info($path); ?>
+                            <?php
+                                $info = image_file_info($path);
+                                $previousOwner = $detachHistoryByPath[$info['path']] ?? null;
+                            ?>
                             <article class="product-admin-card">
                                 <div class="product-admin-top">
                                     <div class="product-number">File</div>
@@ -838,6 +895,16 @@ $flash = flash_message($msg);
 
                                 <h3>Imazh i palidhur</h3>
                                 <p>Nuk përdoret nga produkt/kategori.</p>
+
+                                <?php if ($previousOwner): ?>
+                                    <div class="media-previous-owner">
+                                        <strong>Më parë:</strong>
+                                        <?php if (($previousOwner['owner_type'] ?? '') === 'product'): ?>
+                                            #<?= e($previousOwner['menu_number']) ?> —
+                                        <?php endif; ?>
+                                        <?= e($previousOwner['name_sq']) ?> / <?= e($previousOwner['name_en']) ?>
+                                    </div>
+                                <?php endif; ?>
 
                                 <div class="media-path"><?= e($info['path']) ?></div>
                                 <div class="media-meta">
@@ -856,7 +923,7 @@ $flash = flash_message($msg);
                                                 <select name="id" required>
                                                     <option value="">Zgjidh produktin</option>
                                                     <?php foreach ($productsWithoutImages as $product): ?>
-                                                        <option value="<?= e($product['id']) ?>">
+                                                        <option value="<?= e($product['id']) ?>" <?= $previousOwner && ($previousOwner['owner_type'] ?? '') === 'product' && (int)$previousOwner['owner_id'] === (int)$product['id'] ? 'selected' : '' ?>>
                                                             #<?= e($product['menu_number']) ?> — <?= e($product['name_sq']) ?> / <?= e($product['name_en']) ?>
                                                         </option>
                                                     <?php endforeach; ?>
@@ -876,7 +943,7 @@ $flash = flash_message($msg);
                                                 <select name="id" required>
                                                     <option value="">Zgjidh kategorinë</option>
                                                     <?php foreach ($categoriesWithoutImages as $category): ?>
-                                                        <option value="<?= e($category['id']) ?>">
+                                                        <option value="<?= e($category['id']) ?>" <?= $previousOwner && ($previousOwner['owner_type'] ?? '') === 'category' && (int)$previousOwner['owner_id'] === (int)$category['id'] ? 'selected' : '' ?>>
                                                             <?= e($category['name_sq']) ?> / <?= e($category['name_en']) ?>
                                                         </option>
                                                     <?php endforeach; ?>
