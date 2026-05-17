@@ -437,6 +437,78 @@ $flash = flash_message($msg);
             border-top: 1px solid rgba(255,255,255,.10);
         }
 
+
+        /* IMAGES MANAGER FILTERS START */
+        .media-manager-toolbar {
+            border: 1px solid rgba(243, 201, 109, .18);
+            border-radius: 22px;
+            padding: 16px;
+            background:
+                radial-gradient(circle at 12% 0%, rgba(243, 201, 109, .10), transparent 34%),
+                rgba(255,255,255,.035);
+        }
+
+        .media-toolbar-grid {
+            display: grid;
+            grid-template-columns: minmax(220px, 1.4fr) minmax(180px, .9fr) minmax(180px, .9fr) auto;
+            gap: 12px;
+            align-items: end;
+        }
+
+        .media-filter-field {
+            display: grid;
+            gap: 7px;
+        }
+
+        .media-filter-field span {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+        }
+
+        .media-filter-field input,
+        .media-filter-field select {
+            width: 100%;
+            min-height: 44px;
+            border: 1px solid rgba(255,255,255,.12);
+            border-radius: 14px;
+            padding: 11px 12px;
+            color: var(--text);
+            background: rgba(0,0,0,.30);
+            outline: none;
+        }
+
+        .media-filter-field input:focus,
+        .media-filter-field select:focus {
+            border-color: rgba(243, 201, 109, .44);
+            box-shadow: 0 0 0 3px rgba(243, 201, 109, .10);
+        }
+
+        .media-filter-actions {
+            display: grid;
+            align-items: end;
+        }
+
+        .media-filter-summary {
+            margin-top: 12px;
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .media-card-hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 980px) {
+            .media-toolbar-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        /* IMAGES MANAGER FILTERS END */
+
         @media (max-width: 780px) {
             .media-tabs,
             .modal-actions {
@@ -475,6 +547,43 @@ $flash = flash_message($msg);
             <section class="media-tabs">
                 <a class="btn btn-secondary" href="/tadeo-admin/products.php">Menaxho produktet</a>
                 <a class="btn btn-secondary" href="/tadeo-admin/categories.php">Menaxho kategoritë</a>
+            </section>
+
+            <section class="media-section media-manager-toolbar" id="mediaManagerToolbar" aria-label="Filtrat e imazheve">
+                <div class="media-toolbar-grid">
+                    <label class="media-filter-field">
+                        <span>Kërko</span>
+                        <input type="search" id="imageSearch" placeholder="Produkt, kategori, emër file-i...">
+                    </label>
+
+                    <label class="media-filter-field">
+                        <span>Statusi</span>
+                        <select id="imageStatusFilter">
+                            <option value="all">Të gjitha</option>
+                            <option value="product-linked">Produkte me imazh</option>
+                            <option value="product-missing">Produkte pa imazh</option>
+                            <option value="category-linked">Kategori me imazh</option>
+                            <option value="category-missing">Kategori pa imazh</option>
+                            <option value="unused">Imazhe të palidhura</option>
+                            <option value="missing-file">File mungon në server</option>
+                            <option value="large-file">Mbi 500 KB</option>
+                            <option value="non-webp">Jo WebP</option>
+                        </select>
+                    </label>
+
+                    <label class="media-filter-field">
+                        <span>Kategoria</span>
+                        <select id="imageCategoryFilter">
+                            <option value="all">Të gjitha kategoritë</option>
+                        </select>
+                    </label>
+
+                    <div class="media-filter-actions">
+                        <button class="btn btn-secondary" type="button" id="clearImageFilters">Pastro filtrat</button>
+                    </div>
+                </div>
+
+                <div class="media-filter-summary" id="imageFilterSummary">Duke shfaqur të gjitha rezultatet.</div>
             </section>
 
             <section class="media-section">
@@ -779,5 +888,200 @@ $flash = flash_message($msg);
             });
         })();
     </script>
+
+    <script>
+        /* Images Manager v3 filters */
+        (function () {
+            const toolbar = document.getElementById('mediaManagerToolbar');
+            const searchInput = document.getElementById('imageSearch');
+            const statusFilter = document.getElementById('imageStatusFilter');
+            const categoryFilter = document.getElementById('imageCategoryFilter');
+            const clearButton = document.getElementById('clearImageFilters');
+            const summary = document.getElementById('imageFilterSummary');
+
+            if (!toolbar || !searchInput || !statusFilter || !categoryFilter || !clearButton || !summary) {
+                return;
+            }
+
+            const cards = Array.from(document.querySelectorAll('.product-admin-card'));
+
+            function normalize(value) {
+                return (value || '')
+                    .toString()
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '');
+            }
+
+            function sectionTitle(card) {
+                const section = card.closest('.media-section, details.media-collapsible');
+                if (!section) {
+                    return '';
+                }
+
+                const title = section.querySelector('h2, summary .media-collapsible-title span');
+                return normalize(title ? title.textContent : '');
+            }
+
+            function cardType(card) {
+                const title = sectionTitle(card);
+                const badge = normalize(card.querySelector('.badge') ? card.querySelector('.badge').textContent : '');
+
+                if (title.includes('imazhe produktesh')) {
+                    return 'product-linked';
+                }
+
+                if (title.includes('imazhe kategorish')) {
+                    return 'category-linked';
+                }
+
+                if (title.includes('produkte pa imazh')) {
+                    return 'product-missing';
+                }
+
+                if (title.includes('kategori pa imazh')) {
+                    return 'category-missing';
+                }
+
+                if (title.includes('imazhe te palidhura') || title.includes('imazhe të palidhura')) {
+                    return 'unused';
+                }
+
+                if (badge.includes('mungon')) {
+                    return 'missing-file';
+                }
+
+                return 'all';
+            }
+
+            function cardPath(card) {
+                const path = card.querySelector('.media-path');
+                return path ? path.textContent.trim() : '';
+            }
+
+            function cardCategory(card) {
+                const spans = Array.from(card.querySelectorAll('.media-meta span'));
+                const found = spans.find(function (span) {
+                    return normalize(span.textContent).startsWith('kategoria:');
+                });
+
+                if (!found) {
+                    return '';
+                }
+
+                return found.textContent.replace(/^Kategoria:\s*/i, '').trim();
+            }
+
+            function parseSizeBytes(card) {
+                const text = card.textContent || '';
+                const match = text.match(/Madhësia:\s*([0-9]+(?:[.,][0-9]+)?)\s*(B|KB|MB|GB)/i);
+
+                if (!match) {
+                    return 0;
+                }
+
+                const value = parseFloat(match[1].replace(',', '.'));
+                const unit = match[2].toUpperCase();
+
+                if (unit === 'GB') return value * 1024 * 1024 * 1024;
+                if (unit === 'MB') return value * 1024 * 1024;
+                if (unit === 'KB') return value * 1024;
+                return value;
+            }
+
+            function isMissingFile(card) {
+                const badge = normalize(card.querySelector('.badge') ? card.querySelector('.badge').textContent : '');
+                return badge.includes('mungon');
+            }
+
+            function isNonWebp(card) {
+                const path = normalize(cardPath(card));
+                return path !== '' && !path.endsWith('.webp');
+            }
+
+            function populateCategories() {
+                const values = new Set();
+
+                cards.forEach(function (card) {
+                    const category = cardCategory(card);
+
+                    if (category && category !== '—') {
+                        values.add(category);
+                    }
+                });
+
+                Array.from(values).sort().forEach(function (category) {
+                    const option = document.createElement('option');
+                    option.value = category;
+                    option.textContent = category;
+                    categoryFilter.appendChild(option);
+                });
+            }
+
+            function matchesStatus(card, status) {
+                const type = cardType(card);
+
+                if (status === 'all') {
+                    return true;
+                }
+
+                if (status === 'missing-file') {
+                    return isMissingFile(card);
+                }
+
+                if (status === 'large-file') {
+                    return parseSizeBytes(card) > 500 * 1024;
+                }
+
+                if (status === 'non-webp') {
+                    return isNonWebp(card);
+                }
+
+                return type === status;
+            }
+
+            function applyFilters() {
+                const q = normalize(searchInput.value);
+                const status = statusFilter.value;
+                const category = categoryFilter.value;
+                let visible = 0;
+
+                cards.forEach(function (card) {
+                    const text = normalize(card.textContent);
+                    const cat = cardCategory(card);
+                    const okSearch = q === '' || text.includes(q);
+                    const okStatus = matchesStatus(card, status);
+                    const okCategory = category === 'all' || cat === category;
+                    const show = okSearch && okStatus && okCategory;
+
+                    card.classList.toggle('media-card-hidden', !show);
+
+                    if (show) {
+                        visible++;
+                    }
+                });
+
+                summary.textContent = 'Duke shfaqur ' + visible + ' nga ' + cards.length + ' rezultate.';
+            }
+
+            populateCategories();
+
+            [searchInput, statusFilter, categoryFilter].forEach(function (el) {
+                el.addEventListener('input', applyFilters);
+                el.addEventListener('change', applyFilters);
+            });
+
+            clearButton.addEventListener('click', function () {
+                searchInput.value = '';
+                statusFilter.value = 'all';
+                categoryFilter.value = 'all';
+                applyFilters();
+                searchInput.focus();
+            });
+
+            applyFilters();
+        })();
+    </script>
+
 </body>
 </html>
