@@ -168,7 +168,7 @@ $flash = product_trash_flash((string)($_GET['msg'] ?? ''));
                     <div>
                         <p class="admin-muted">
                             Produktet në kosh nuk shfaqen në menunë publike. Mund t’i rikthesh si të fshehura ose t’i fshish përgjithmonë.
-                            Produktet që qëndrojnë këtu më shumë se <strong>30 ditë</strong> pastrohen automatikisht kur hapet kjo faqe.
+                            Produktet që qëndrojnë këtu më shumë se <strong>30 ditë</strong> pastrohen automatikisht nga faqja kryesore e menusë.
                         </p>
                     </div>
 

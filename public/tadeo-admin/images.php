@@ -872,8 +872,15 @@ $flash = flash_message($msg);
                 <?php endif; ?>
                 </div>
             </details>
-            <section class="media-section">
-                <h2>Imazhe të palidhura</h2>
+            <details class="media-section media-collapsible">
+                <summary>
+                    <span class="media-collapsible-title">
+                        <span>Imazhe të palidhura</span>
+                        <small>Hape vetëm kur do të kontrollosh, lidhësh ose çosh në kosh file që nuk përdoren.</small>
+                    </span>
+                    <strong class="media-collapsible-count"><?= e($unusedCount) ?></strong>
+                </summary>
+                <div class="media-collapsible-body">
                 <?php if ($unusedImages === []): ?>
                     <div class="panel"><p class="admin-muted">Nuk ka imazhe të palidhura për momentin.</p></div>
                 <?php else: ?>
@@ -970,7 +977,8 @@ $flash = flash_message($msg);
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
-            </section>
+                </div>
+            </details>
         </main>
     </div>
 
