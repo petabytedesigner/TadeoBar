@@ -124,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="full">
                         <label>Ngarko imazh për kategorinë</label>
                         <input name="icon_image_file" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
-                        <div class="help-text">Lejohen JPG, PNG ose WEBP. Maksimumi 2 MB. Rekomandim: ikonë katrore 512×512.</div>
+                        <div class="help-text">Lejohen JPG, PNG ose WEBP, maksimumi 2 MB. JPG/PNG konvertohen automatikisht në WEBP kur serveri e mbështet.</div>
                     </div>
                 </div>
 
