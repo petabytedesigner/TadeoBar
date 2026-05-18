@@ -794,7 +794,7 @@ $flash = flash_message($msg);
                 <?php endif; ?>
             </section>
 
-            <details class="media-section media-collapsible">
+            <details class="media-section media-collapsible" data-filter-status="product-missing">
                 <summary>
                     <span class="media-collapsible-title">
                         <span>Produkte pa imazh</span>
@@ -833,7 +833,7 @@ $flash = flash_message($msg);
                 <?php endif; ?>
                 </div>
             </details>
-            <details class="media-section media-collapsible">
+            <details class="media-section media-collapsible" data-filter-status="category-missing">
                 <summary>
                     <span class="media-collapsible-title">
                         <span>Kategori pa imazh</span>
@@ -872,7 +872,7 @@ $flash = flash_message($msg);
                 <?php endif; ?>
                 </div>
             </details>
-            <details class="media-section media-collapsible">
+            <details class="media-section media-collapsible" data-filter-status="unused">
                 <summary>
                     <span class="media-collapsible-title">
                         <span>Imazhe të palidhura</span>
@@ -1224,6 +1224,22 @@ $flash = flash_message($msg);
                 categoryFilter.value = 'all';
                 applyFilters();
                 searchInput.focus();
+            });
+
+            /* Images Manager collapsible status sync */
+            document.querySelectorAll('details.media-collapsible[data-filter-status]').forEach(function (details) {
+                details.addEventListener('toggle', function () {
+                    if (!details.open) {
+                        return;
+                    }
+
+                    const wantedStatus = details.dataset.filterStatus || 'all';
+
+                    searchInput.value = '';
+                    statusFilter.value = wantedStatus;
+                    categoryFilter.value = 'all';
+                    applyFilters();
+                });
             });
 
             applyFilters();
