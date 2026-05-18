@@ -1834,3 +1834,67 @@ svg {
     }
 }
 /* FINAL MOBILE PRODUCT CARD GUARD END */
+
+/* FINAL MOBILE LONG PRODUCT TEXT GUARD START */
+/* Phone only: prevent long product names from making one card much taller than the others. */
+@media (max-width: 980px) {
+    .product-card {
+        grid-template-columns: 112px minmax(0, 1fr) !important;
+        min-height: 142px !important;
+    }
+
+    .product-media {
+        width: 112px !important;
+        height: auto !important;
+        min-height: 142px !important;
+        max-height: none !important;
+        align-self: stretch !important;
+    }
+
+    .product-body {
+        min-height: 142px !important;
+        padding: 12px !important;
+        gap: 8px !important;
+    }
+
+    .product-body h3 {
+        display: -webkit-box !important;
+        -webkit-line-clamp: 2 !important;
+        -webkit-box-orient: vertical !important;
+        overflow: hidden !important;
+        font-size: 16px !important;
+        line-height: 1.2 !important;
+        margin-top: 4px !important;
+    }
+
+    .product-body p {
+        display: -webkit-box !important;
+        -webkit-line-clamp: 2 !important;
+        -webkit-box-orient: vertical !important;
+        overflow: hidden !important;
+        font-size: 13px !important;
+        line-height: 1.25 !important;
+        margin-top: 4px !important;
+    }
+
+    .product-body strong {
+        margin-top: auto !important;
+    }
+}
+
+@media (max-width: 430px) {
+    .product-card {
+        grid-template-columns: 108px minmax(0, 1fr) !important;
+        min-height: 138px !important;
+    }
+
+    .product-media {
+        width: 108px !important;
+        min-height: 138px !important;
+    }
+
+    .product-body {
+        min-height: 138px !important;
+    }
+}
+/* FINAL MOBILE LONG PRODUCT TEXT GUARD END */

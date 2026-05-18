@@ -196,7 +196,7 @@ $wifiPayload = public_wifi_payload($settings['wifi_ssid'], $settings['wifi_passw
     <meta name="theme-color" content="#070707">
     <link rel="icon" href="/favicon.ico">
     <meta name="description" content="<?= e($barName) ?> digital menu and WiFi access.">
-    <link rel="stylesheet" href="/assets/css/public-menu.css?v=20260518-mobile-card-guard-v1">
+    <link rel="stylesheet" href="/assets/css/public-menu.css?v=20260518-mobile-long-text-guard-v1">
 </head>
 <body>
     <div class="site-shell" id="top">
