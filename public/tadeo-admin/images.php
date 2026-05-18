@@ -149,6 +149,7 @@ function flash_message(string $msg): string
     return match ($msg) {
         'detached' => 'Imazhi u hoq nga produkti/kategoria. File-i mbeti në server.',
         'deleted' => 'Imazhi u fshi përgjithmonë.',
+        'image_trashed' => 'Imazhi u çua në kosh.',
         'attached' => 'Imazhi u lidh me sukses.',
         'already_used' => 'Ky imazh është tashmë i lidhur me një produkt ose kategori.',
         'attach_failed' => 'Imazhi nuk u lidh dot. Kontrollo nëse produkti/kategoria ka tashmë imazh.',
@@ -171,6 +172,8 @@ try {
     ensure_image_detach_history_table($pdo);
 
     $hasCategoryImageColumn = table_column_exists($pdo, 'categories', 'icon_image_path');
+    $hasProductDeletedAt = table_column_exists($pdo, 'products', 'deleted_at');
+    $productDeletedWhere = $hasProductDeletedAt ? 'AND p.deleted_at IS NULL' : '';
 
     $productImages = $pdo->query(
         "SELECT
@@ -182,7 +185,7 @@ try {
             c.name_sq AS category_name
          FROM products p
          LEFT JOIN categories c ON c.id = p.category_id
-         WHERE p.image_path IS NOT NULL AND p.image_path <> ''
+         WHERE p.image_path IS NOT NULL AND p.image_path <> '' {$productDeletedWhere}
          ORDER BY p.menu_number, p.id"
     )->fetchAll();
 
@@ -195,7 +198,7 @@ try {
             c.name_sq AS category_name
          FROM products p
          LEFT JOIN categories c ON c.id = p.category_id
-         WHERE p.image_path IS NULL OR p.image_path = ''
+         WHERE (p.image_path IS NULL OR p.image_path = '') {$productDeletedWhere}
          ORDER BY p.menu_number, p.id"
     )->fetchAll();
 
@@ -284,7 +287,7 @@ $flash = flash_message($msg);
     <style>
         .media-tabs {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 14px;
             margin-top: 18px;
         }
@@ -629,6 +632,7 @@ $flash = flash_message($msg);
             <section class="media-tabs">
                 <a class="btn btn-secondary" href="/tadeo-admin/products.php">Menaxho produktet</a>
                 <a class="btn btn-secondary" href="/tadeo-admin/categories.php">Menaxho kategoritë</a>
+                <a class="btn btn-secondary" href="/tadeo-admin/image-trash.php">Koshi i imazheve</a>
             </section>
 
             <section class="media-section media-manager-toolbar" id="mediaManagerToolbar" aria-label="Filtrat e imazheve">
@@ -714,12 +718,12 @@ $flash = flash_message($msg);
 
                                     <?php if ($info['path'] !== ''): ?>
                                         <form method="post" action="/tadeo-admin/image-delete.php" class="js-confirm-action"
-                                              data-title="Fshi imazhin përgjithmonë?"
-                                              data-message="Ky veprim fshin file-in nga serveri dhe heq lidhjen nga çdo produkt ose kategori që e përdor. Nuk kthehet pas."
-                                              data-confirm-label="Fshi përgjithmonë">
+                                              data-title="Ço imazhin në kosh?"
+                                              data-message="Ky veprim e çon imazhin në kosh dhe heq lidhjen nga produkti ose kategoria. Mund të rikthehet nga koshi."
+                                              data-confirm-label="Ço në kosh">
                                             <?= csrf_field() ?>
                                             <input type="hidden" name="path" value="<?= e($info['path']) ?>">
-                                            <button class="btn btn-danger" type="submit">Fshi përgjithmonë</button>
+                                            <button class="btn btn-danger" type="submit">Ço në kosh</button>
                                         </form>
                                     <?php endif; ?>
                                 </div>
@@ -775,12 +779,12 @@ $flash = flash_message($msg);
 
                                     <?php if ($info['path'] !== ''): ?>
                                         <form method="post" action="/tadeo-admin/image-delete.php" class="js-confirm-action"
-                                              data-title="Fshi imazhin përgjithmonë?"
-                                              data-message="Ky veprim fshin file-in nga serveri dhe heq lidhjen nga çdo produkt ose kategori që e përdor. Nuk kthehet pas."
-                                              data-confirm-label="Fshi përgjithmonë">
+                                              data-title="Ço imazhin në kosh?"
+                                              data-message="Ky veprim e çon imazhin në kosh dhe heq lidhjen nga produkti ose kategoria. Mund të rikthehet nga koshi."
+                                              data-confirm-label="Ço në kosh">
                                             <?= csrf_field() ?>
                                             <input type="hidden" name="path" value="<?= e($info['path']) ?>">
-                                            <button class="btn btn-danger" type="submit">Fshi përgjithmonë</button>
+                                            <button class="btn btn-danger" type="submit">Ço në kosh</button>
                                         </form>
                                     <?php endif; ?>
                                 </div>
@@ -800,7 +804,7 @@ $flash = flash_message($msg);
                 </summary>
                 <div class="media-collapsible-body">
                 <?php if ($productsWithoutImages === []): ?>
-                    <div class="panel"><p class="admin-muted">Të gjitha produktet kanë imazh.</p></div>
+                    <div class="panel"><p class="admin-muted">Nuk ka produkte aktive pa imazh.</p></div>
                 <?php else: ?>
                     <div class="product-grid">
                         <?php foreach ($productsWithoutImages as $product): ?>
@@ -954,12 +958,12 @@ $flash = flash_message($msg);
                                     <?php endif; ?>
 
                                     <form method="post" action="/tadeo-admin/image-delete.php" class="js-confirm-action"
-                                          data-title="Fshi file-in përgjithmonë?"
-                                          data-message="Ky file nuk është i lidhur me produkt ose kategori. Fshirja nuk kthehet pas."
-                                          data-confirm-label="Fshi përgjithmonë">
+                                          data-title="Ço file-in në kosh?"
+                                          data-message="Ky file nuk është i lidhur me produkt ose kategori. Do të çohet në kosh dhe mund të rikthehet."
+                                          data-confirm-label="Ço në kosh">
                                         <?= csrf_field() ?>
                                         <input type="hidden" name="path" value="<?= e($info['path']) ?>">
-                                        <button class="btn btn-danger" type="submit">Fshi përgjithmonë</button>
+                                        <button class="btn btn-danger" type="submit">Ço në kosh</button>
                                     </form>
                                 </div>
                             </article>

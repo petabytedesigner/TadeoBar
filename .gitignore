@@ -5,3 +5,4 @@ Thumbs.db
 public/includes/config.local.php
 public/db-test.php
 public/setup.php
+public/uploads/.trash-cleanup-last-run

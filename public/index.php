@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/includes/helpers.php';
 require_once __DIR__ . '/includes/db.php';
+require_once __DIR__ . '/includes/trash_cleanup.php';
 
 function public_setting(PDO $pdo, string $key, string $default = ''): string
 {
@@ -128,6 +129,8 @@ $pageError = '';
 
 try {
     $pdo = db();
+
+    run_trash_cleanup_if_due($pdo);
 
     foreach ($settings as $key => $default) {
         $settings[$key] = public_setting($pdo, $key, $default);
