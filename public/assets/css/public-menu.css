@@ -1752,3 +1752,85 @@ svg {
 }
 /* DESKTOP PRODUCT IMAGE STRONG FIT END */
 
+
+/* FINAL MOBILE PRODUCT CARD GUARD START */
+/* Phone/tablet only: protect public menu cards from desktop image fit experiments. */
+@media (max-width: 980px) {
+    .product-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+
+    .product-card {
+        display: grid !important;
+        grid-template-columns: 112px minmax(0, 1fr) !important;
+        min-height: 142px !important;
+        height: auto !important;
+        align-items: stretch !important;
+    }
+
+    .product-media {
+        position: relative !important;
+        width: 112px !important;
+        height: 142px !important;
+        min-height: 142px !important;
+        max-height: 142px !important;
+        overflow: hidden !important;
+        background: #050505 !important;
+    }
+
+    .product-media img.product-media-bg {
+        display: none !important;
+    }
+
+    .product-media img.product-media-main,
+    .product-media > img:not(.product-media-bg) {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: contain !important;
+        object-position: center center !important;
+        transform: none !important;
+        display: block !important;
+        background: transparent !important;
+    }
+
+    .product-body {
+        min-height: 142px !important;
+        height: auto !important;
+        padding: 12px !important;
+        gap: 10px !important;
+    }
+
+    .product-body h3 {
+        font-size: 16px !important;
+        line-height: 1.22 !important;
+    }
+
+    .product-body p {
+        font-size: 13px !important;
+        line-height: 1.32 !important;
+    }
+
+    .product-body strong {
+        margin-top: auto !important;
+    }
+}
+
+@media (max-width: 430px) {
+    .product-card {
+        grid-template-columns: 108px minmax(0, 1fr) !important;
+        min-height: 138px !important;
+    }
+
+    .product-media {
+        width: 108px !important;
+        height: 138px !important;
+        min-height: 138px !important;
+        max-height: 138px !important;
+    }
+
+    .product-body {
+        min-height: 138px !important;
+    }
+}
+/* FINAL MOBILE PRODUCT CARD GUARD END */
