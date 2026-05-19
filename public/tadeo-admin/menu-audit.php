@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
 
+const AUDIT_PRODUCT_IMAGE_MAX_BYTES = 512000;
+const AUDIT_CATEGORY_IMAGE_MAX_BYTES = 512000;
+
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/admin_header.php';
 
@@ -41,19 +44,14 @@ function audit_safe_image_path(?string $path): ?string
     return $path;
 }
 
-function audit_image_exists(?string $path): bool
+function audit_absolute_path(string $relativePath): string
 {
-    $safe = audit_safe_image_path($path);
-
-    if ($safe === null) {
-        return false;
-    }
-
-    return is_file(dirname(__DIR__) . '/' . $safe);
+    return dirname(__DIR__) . '/' . ltrim($relativePath, '/');
 }
 
 function audit_uploaded_images(string $folder): array
 {
+    $folder = trim($folder, '/');
     $base = dirname(__DIR__) . '/uploads/' . $folder;
     $relativeBase = 'uploads/' . $folder;
 
@@ -89,6 +87,72 @@ function audit_uploaded_images(string $folder): array
     return $items;
 }
 
+function audit_human_file_size(int $bytes): string
+{
+    if ($bytes <= 0) {
+        return '—';
+    }
+
+    $units = ['B', 'KB', 'MB', 'GB'];
+    $index = 0;
+    $value = (float)$bytes;
+
+    while ($value >= 1024 && $index < count($units) - 1) {
+        $value /= 1024;
+        $index++;
+    }
+
+    return $index === 0 ? (string)$bytes . ' B' : number_format($value, 1) . ' ' . $units[$index];
+}
+
+function audit_image_metadata(string $path): array
+{
+    $absolute = audit_absolute_path($path);
+
+    if (!is_file($absolute)) {
+        return [
+            'exists' => false,
+            'size' => 0,
+            'width' => null,
+            'height' => null,
+            'readable' => false,
+        ];
+    }
+
+    $dimensions = @getimagesize($absolute);
+    $width = is_array($dimensions) && isset($dimensions[0]) ? (int)$dimensions[0] : null;
+    $height = is_array($dimensions) && isset($dimensions[1]) ? (int)$dimensions[1] : null;
+
+    return [
+        'exists' => true,
+        'size' => (int)filesize($absolute),
+        'width' => $width,
+        'height' => $height,
+        'readable' => $width !== null && $height !== null,
+    ];
+}
+
+function audit_dimensions_label(array $meta): string
+{
+    if (($meta['width'] ?? null) === null || ($meta['height'] ?? null) === null) {
+        return 'dimensione të palexueshme';
+    }
+
+    return (string)$meta['width'] . '×' . (string)$meta['height'];
+}
+
+function audit_is_exact_nine_sixteen(array $meta): bool
+{
+    $width = $meta['width'] ?? null;
+    $height = $meta['height'] ?? null;
+
+    if (!is_int($width) || !is_int($height) || $width <= 0 || $height <= 0) {
+        return false;
+    }
+
+    return $width * 16 === $height * 9;
+}
+
 function audit_add(array &$bucket, string $severity, string $title, string $detail): void
 {
     $bucket[] = [
@@ -103,6 +167,8 @@ $warnings = [];
 $info = [];
 
 $hasCategoryImages = audit_table_column_exists($pdo, 'categories', 'icon_image_path');
+$hasProductDeletedAt = audit_table_column_exists($pdo, 'products', 'deleted_at');
+$deletedAtSelect = $hasProductDeletedAt ? '' : ', NULL AS deleted_at';
 
 $categories = $pdo->query(
     "SELECT *
@@ -119,7 +185,7 @@ $categoryImageSelect = $hasCategoryImages ? 'c.icon_image_path' : 'NULL AS icon_
 
 $products = $pdo->query(
     "SELECT
-        p.*,
+        p.*{$deletedAtSelect},
         c.name_sq AS category_name_sq,
         c.name_en AS category_name_en,
         c.is_active AS category_is_active,
@@ -131,10 +197,12 @@ $products = $pdo->query(
 
 $activeProducts = 0;
 $hiddenProducts = 0;
+$trashedProducts = 0;
 $activeCategories = 0;
 $hiddenCategories = 0;
 $productsWithoutImages = 0;
 $categoriesWithoutImages = 0;
+$trashedProductItems = [];
 
 foreach ($categories as $category) {
     $nameSq = trim((string)($category['name_sq'] ?? ''));
@@ -164,8 +232,25 @@ foreach ($categories as $category) {
 
         if ($imagePath === null) {
             $categoriesWithoutImages++;
-        } elseif (!audit_image_exists($imagePath)) {
-            audit_add($warnings, 'warning', 'Imazh kategorie mungon në server', $nameSq . ' → ' . $imagePath);
+        } else {
+            $meta = audit_image_metadata($imagePath);
+
+            if (!$meta['exists']) {
+                audit_add($warnings, 'warning', 'Imazh kategorie mungon në server', $nameSq . ' → ' . $imagePath);
+            } else {
+                if (!$meta['readable']) {
+                    audit_add($warnings, 'warning', 'Dimensionet e imazhit të kategorisë nuk lexohen', $nameSq . ' → ' . $imagePath);
+                }
+
+                if ((int)$meta['size'] > AUDIT_CATEGORY_IMAGE_MAX_BYTES) {
+                    audit_add(
+                        $warnings,
+                        'warning',
+                        'Imazh kategorie shumë i madh',
+                        $nameSq . ' → ' . $imagePath . ' → ' . audit_human_file_size((int)$meta['size']) . ' / limit ' . audit_human_file_size(AUDIT_CATEGORY_IMAGE_MAX_BYTES)
+                    );
+                }
+            }
         }
     } else {
         $categoriesWithoutImages = count($categories);
@@ -188,6 +273,10 @@ foreach ($slugCounts as $slug => $count) {
 
 $menuNumberCounts = [];
 foreach ($products as $product) {
+    if (($product['deleted_at'] ?? null) !== null) {
+        continue;
+    }
+
     $menuNumber = (int)($product['menu_number'] ?? 0);
 
     if ($menuNumber > 0) {
@@ -203,14 +292,25 @@ foreach ($products as $product) {
     $menuNumber = (int)($product['menu_number'] ?? 0);
     $categoryId = (int)($product['category_id'] ?? 0);
     $isActive = (int)($product['is_active'] ?? 0);
+    $deletedAt = $product['deleted_at'] ?? null;
+    $isTrashed = $deletedAt !== null;
+    $label = $nameSq !== '' ? $nameSq : 'Produkt ID: ' . $id;
+
+    if ($isTrashed) {
+        $trashedProducts++;
+        $trashedProductItems[] = [
+            'severity' => 'info',
+            'title' => '#' . (string)$menuNumber . ' — ' . $label,
+            'detail' => 'Në kosh që prej: ' . (string)$deletedAt,
+        ];
+        continue;
+    }
 
     if ($isActive === 1) {
         $activeProducts++;
     } else {
         $hiddenProducts++;
     }
-
-    $label = $nameSq !== '' ? $nameSq : 'Produkt ID: ' . $id;
 
     if ($nameSq === '') {
         audit_add($critical, 'critical', 'Produkt pa emër shqip', 'ID: ' . $id);
@@ -240,8 +340,27 @@ foreach ($products as $product) {
 
     if ($imagePath === null) {
         $productsWithoutImages++;
-    } elseif (!audit_image_exists($imagePath)) {
-        audit_add($warnings, 'warning', 'Imazh produkti mungon në server', $label . ' → ' . $imagePath);
+    } else {
+        $meta = audit_image_metadata($imagePath);
+
+        if (!$meta['exists']) {
+            audit_add($warnings, 'warning', 'Imazh produkti mungon në server', $label . ' → ' . $imagePath);
+        } else {
+            if (!$meta['readable']) {
+                audit_add($warnings, 'warning', 'Dimensionet e imazhit të produktit nuk lexohen', $label . ' → ' . $imagePath);
+            } elseif (!audit_is_exact_nine_sixteen($meta)) {
+                audit_add($warnings, 'warning', 'Imazh produkti jo 9:16', $label . ' → ' . $imagePath . ' → ' . audit_dimensions_label($meta));
+            }
+
+            if ((int)$meta['size'] > AUDIT_PRODUCT_IMAGE_MAX_BYTES) {
+                audit_add(
+                    $warnings,
+                    'warning',
+                    'Imazh produkti mbi 500 KB',
+                    $label . ' → ' . $imagePath . ' → ' . audit_human_file_size((int)$meta['size']) . ' / limit ' . audit_human_file_size(AUDIT_PRODUCT_IMAGE_MAX_BYTES)
+                );
+            }
+        }
     }
 }
 
@@ -253,7 +372,7 @@ foreach ($menuNumberCounts as $menuNumber => $count) {
 
 $activeProductsByCategory = [];
 foreach ($products as $product) {
-    if ((int)$product['is_active'] !== 1) {
+    if (($product['deleted_at'] ?? null) !== null || (int)$product['is_active'] !== 1) {
         continue;
     }
 
@@ -300,8 +419,20 @@ foreach ($uploadedPaths as $path) {
     }
 }
 
+$trashImages = array_merge(
+    audit_uploaded_images('trash/products'),
+    audit_uploaded_images('trash/categories')
+);
+
+$missingDbFiles = 0;
+foreach ($warnings as $warning) {
+    if (str_contains($warning['title'], 'mungon në server')) {
+        $missingDbFiles++;
+    }
+}
+
 if ($productsWithoutImages > 0) {
-    audit_add($info, 'info', 'Produkte pa imazh', (string)$productsWithoutImages . ' produkte nuk kanë imazh.');
+    audit_add($info, 'info', 'Produkte pa imazh', (string)$productsWithoutImages . ' produkte aktive/të fshehura nuk kanë imazh.');
 }
 
 if ($categoriesWithoutImages > 0) {
@@ -309,10 +440,19 @@ if ($categoriesWithoutImages > 0) {
 }
 
 if (count($unusedImages) > 0) {
-    audit_add($info, 'info', 'Imazhe të palidhura', (string)count($unusedImages) . ' file janë në uploads por nuk përdoren nga DB.');
+    audit_add($info, 'info', 'File në server por nuk përdoren', (string)count($unusedImages) . ' file janë në uploads/products ose uploads/categories, por nuk përdoren nga DB.');
+}
+
+if (count($trashImages) > 0) {
+    audit_add($info, 'info', 'Imazhe në kosh', (string)count($trashImages) . ' file janë në uploads/trash.');
+}
+
+if ($trashedProducts > 0) {
+    audit_add($info, 'info', 'Produkte në kosh', (string)$trashedProducts . ' produkte kanë deleted_at dhe nuk shfaqen në menunë publike.');
 }
 
 $totalProducts = count($products);
+$totalLiveProducts = $totalProducts - $trashedProducts;
 $totalCategories = count($categories);
 $totalCritical = count($critical);
 $totalWarnings = count($warnings);
@@ -332,6 +472,34 @@ function audit_render_items(array $items, string $emptyText): void
         <article class="audit-item audit-<?= e($item['severity']) ?>">
             <strong><?= e($item['title']) ?></strong>
             <p><?= e($item['detail']) ?></p>
+        </article>
+        <?php
+    }
+}
+
+function audit_render_path_list(array $paths, string $emptyText): void
+{
+    if ($paths === []) {
+        ?>
+        <div class="audit-empty"><?= e($emptyText) ?></div>
+        <?php
+        return;
+    }
+
+    foreach ($paths as $path) {
+        $meta = audit_image_metadata($path);
+        $detailParts = [];
+
+        if ($meta['exists']) {
+            $detailParts[] = audit_human_file_size((int)$meta['size']);
+            $detailParts[] = audit_dimensions_label($meta);
+        } else {
+            $detailParts[] = 'file nuk u gjet në server';
+        }
+        ?>
+        <article class="audit-item audit-info">
+            <strong><?= e($path) ?></strong>
+            <p><?= e(implode(' · ', $detailParts)) ?></p>
         </article>
         <?php
     }
@@ -418,6 +586,16 @@ function audit_render_items(array $items, string $emptyText): void
             margin-top: 18px;
         }
 
+        .audit-note {
+            margin-top: 14px;
+            padding: 14px;
+            border-radius: 16px;
+            border: 1px solid rgba(243, 201, 109, .18);
+            background: rgba(243, 201, 109, .07);
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
         @media (max-width: 900px) {
             .audit-summary {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -443,20 +621,29 @@ function audit_render_items(array $items, string $emptyText): void
 
             <div class="audit-actions">
                 <a class="btn btn-secondary" href="/tadeo-admin/products.php">Produktet</a>
+                <a class="btn btn-secondary" href="/tadeo-admin/product-trash.php">Produktet në kosh</a>
                 <a class="btn btn-secondary" href="/tadeo-admin/categories.php">Kategoritë</a>
                 <a class="btn btn-secondary" href="/tadeo-admin/images.php">Imazhet</a>
                 <a class="btn btn-secondary" href="/" target="_blank" rel="noopener">Hap menunë publike</a>
             </div>
 
+            <div class="audit-note">
+                Ky audit nuk ndryshon databazën dhe nuk fshin file. Kontrollon vetëm konsistencën mes DB-së, uploads dhe rregullave të imazheve.
+            </div>
+
             <section class="audit-summary">
-                <article class="stat-card"><small>Produkte</small><strong><?= e($totalProducts) ?></strong></article>
+                <article class="stat-card"><small>Produkte total</small><strong><?= e($totalProducts) ?></strong></article>
+                <article class="stat-card"><small>Produkte jashtë koshit</small><strong><?= e($totalLiveProducts) ?></strong></article>
+                <article class="stat-card"><small>Produkte në kosh</small><strong><?= e($trashedProducts) ?></strong></article>
                 <article class="stat-card"><small>Kategori</small><strong><?= e($totalCategories) ?></strong></article>
                 <article class="stat-card"><small>Gabime kritike</small><strong><?= e($totalCritical) ?></strong></article>
                 <article class="stat-card"><small>Paralajmërime</small><strong><?= e($totalWarnings) ?></strong></article>
+                <article class="stat-card"><small>File DB që mungojnë</small><strong><?= e($missingDbFiles) ?></strong></article>
+                <article class="stat-card"><small>File të palidhura</small><strong><?= e(count($unusedImages)) ?></strong></article>
+                <article class="stat-card"><small>Imazhe në kosh</small><strong><?= e(count($trashImages)) ?></strong></article>
                 <article class="stat-card"><small>Produkte aktive</small><strong><?= e($activeProducts) ?></strong></article>
                 <article class="stat-card"><small>Produkte të fshehura</small><strong><?= e($hiddenProducts) ?></strong></article>
                 <article class="stat-card"><small>Kategori aktive</small><strong><?= e($activeCategories) ?></strong></article>
-                <article class="stat-card"><small>Kategori të fshehura</small><strong><?= e($hiddenCategories) ?></strong></article>
             </section>
 
             <section class="audit-section">
@@ -480,19 +667,26 @@ function audit_render_items(array $items, string $emptyText): void
                 </div>
             </section>
 
-            <?php if ($unusedImages !== []): ?>
-                <section class="audit-section">
-                    <h2>Imazhe të palidhura</h2>
-                    <div class="audit-list">
-                        <?php foreach ($unusedImages as $path): ?>
-                            <article class="audit-item audit-info">
-                                <strong><?= e($path) ?></strong>
-                                <p>Ky file është në uploads, por nuk përdoret nga produkt ose kategori.</p>
-                            </article>
-                        <?php endforeach; ?>
-                    </div>
-                </section>
-            <?php endif; ?>
+            <section class="audit-section">
+                <h2>File në server por nuk përdoren</h2>
+                <div class="audit-list">
+                    <?php audit_render_path_list($unusedImages, 'Nuk u gjetën file të palidhura në uploads/products ose uploads/categories.'); ?>
+                </div>
+            </section>
+
+            <section class="audit-section">
+                <h2>Imazhe në kosh</h2>
+                <div class="audit-list">
+                    <?php audit_render_path_list($trashImages, 'Nuk u gjetën imazhe në uploads/trash.'); ?>
+                </div>
+            </section>
+
+            <section class="audit-section">
+                <h2>Produkte në kosh</h2>
+                <div class="audit-list">
+                    <?php audit_render_items($trashedProductItems, 'Nuk u gjetën produkte në kosh.'); ?>
+                </div>
+            </section>
         </main>
     </div>
 </body>
