@@ -17,6 +17,15 @@ ErrorDocument 502 /system-pages/error.php?code=502
 ErrorDocument 503 /system-pages/error.php?code=503
 ErrorDocument 504 /system-pages/error.php?code=504
 
+# SECURITY HEADERS START
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb=(), accelerometer=(), gyroscope=(), magnetometer=()"
+</IfModule>
+# SECURITY HEADERS END
+
 # STATIC ASSET CACHE START
 <IfModule mod_expires.c>
     ExpiresActive On
@@ -38,4 +47,3 @@ ErrorDocument 504 /system-pages/error.php?code=504
     </FilesMatch>
 </IfModule>
 # STATIC ASSET CACHE END
-
