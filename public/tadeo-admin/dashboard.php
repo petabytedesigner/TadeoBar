@@ -38,7 +38,7 @@ $last7 = dashboard_visit_count_between($pdo, $last7StartDate, $todayDate);
 <html lang="sq">
 <head>
     <meta charset="utf-8">
-    <title>Paneli | Tadeo Bar Admin</title>
+    <title>Paneli | <?= e(site_bar_name()) ?> Admin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-admin-header-actions-2">
     <style>

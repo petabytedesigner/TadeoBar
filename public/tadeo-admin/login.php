@@ -3,10 +3,13 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/csrf.php';
+require_once __DIR__ . '/../includes/site_settings.php';
 
 if (admin_current() !== null) {
     redirect('/tadeo-admin/dashboard.php');
 }
+
+$barName = site_bar_name();
 
 $error = '';
 $username = trim((string)($_POST['username'] ?? ''));
@@ -41,13 +44,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="sq">
 <head>
     <meta charset="utf-8">
-    <title>Hyrje Admin | Tadeo Bar</title>
+    <title>Hyrje Admin | <?= e($barName) ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-admin-header-actions-2">
 </head>
 <body class="admin-login-page">
     <main class="login-card">
-        <h1>Tadeo Bar</h1>
+        <h1><?= e($barName) ?></h1>
         <p>Hyrje në panelin e administrimit</p>
 
         <?php if ($error !== ''): ?>
