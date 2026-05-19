@@ -51,8 +51,8 @@ function ensure_image_trash_table(PDO $pdo): void
             name_en VARCHAR(180) NULL,
             deleted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
-            UNIQUE KEY original_path_unique (original_path),
             UNIQUE KEY trash_path_unique (trash_path),
+            KEY original_path_lookup (original_path),
             KEY deleted_at_lookup (deleted_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
@@ -85,7 +85,7 @@ function image_trash_destination(string $relativePath): array
 {
     $root = dirname(__DIR__);
     $folder = str_starts_with($relativePath, 'uploads/products/') ? 'products' : 'categories';
-    $filename = basename($relativePath);
+    $originalFilename = basename($relativePath);
 
     $trashDir = $root . '/uploads/trash/' . $folder;
 
@@ -93,18 +93,27 @@ function image_trash_destination(string $relativePath): array
         mkdir($trashDir, 0755, true);
     }
 
-    $trashRelative = 'uploads/trash/' . $folder . '/' . $filename;
-    $trashAbsolute = $root . '/' . $trashRelative;
+    $name = pathinfo($originalFilename, PATHINFO_FILENAME);
+    $ext = pathinfo($originalFilename, PATHINFO_EXTENSION);
+    $suffix = $ext !== '' ? '.' . $ext : '';
+    $stamp = date('Ymd-His');
 
-    if (is_file($trashAbsolute)) {
-        $name = pathinfo($filename, PATHINFO_FILENAME);
-        $ext = pathinfo($filename, PATHINFO_EXTENSION);
-        $filename = $name . '-' . date('Ymd-His') . ($ext !== '' ? '.' . $ext : '');
+    for ($i = 0; $i < 100; $i++) {
+        if ($i === 0) {
+            $filename = $originalFilename;
+        } else {
+            $filename = $name . '-' . $stamp . '-' . $i . $suffix;
+        }
+
         $trashRelative = 'uploads/trash/' . $folder . '/' . $filename;
         $trashAbsolute = $root . '/' . $trashRelative;
+
+        if (!is_file($trashAbsolute)) {
+            return [$trashRelative, $trashAbsolute];
+        }
     }
 
-    return [$trashRelative, $trashAbsolute];
+    throw new RuntimeException('Nuk u krijua dot emër unik për imazhin në kosh.');
 }
 
 $relativePath = image_delete_safe_relative_path((string)($_POST['path'] ?? ''));
@@ -200,14 +209,6 @@ try {
             (original_path, trash_path, owner_type, owner_id, menu_number, name_sq, name_en, deleted_at)
         VALUES
             (?, ?, ?, ?, ?, ?, ?, NOW())
-        ON DUPLICATE KEY UPDATE
-            trash_path = VALUES(trash_path),
-            owner_type = VALUES(owner_type),
-            owner_id = VALUES(owner_id),
-            menu_number = VALUES(menu_number),
-            name_sq = VALUES(name_sq),
-            name_en = VALUES(name_en),
-            deleted_at = NOW()
     ");
     $stmt->execute([$relativePath, $trashRelative, $ownerType, $ownerId, $menuNumber, $nameSq, $nameEn]);
 

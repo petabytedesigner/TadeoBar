@@ -140,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="full">
                         <label>Ngarko / zëvendëso imazhin e kategorisë</label>
                         <input name="icon_image_file" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
-                        <div class="help-text">Nëse nuk zgjedh imazh të ri, imazhi aktual mbetet. JPG/PNG konvertohen automatikisht në WEBP kur serveri e mbështet.</div>
+                        <div class="help-text">Nëse nuk zgjedh imazh të ri, imazhi aktual mbetet. Lejohen JPG, PNG ose WEBP deri 10 MB; ruhet automatikisht si WEBP i optimizuar. Për kategoritë nuk ka raport të detyruar.</div>
 
                         <?php if (!empty($category['icon_image_path'])): ?>
                             <div class="current-image category-current-image">

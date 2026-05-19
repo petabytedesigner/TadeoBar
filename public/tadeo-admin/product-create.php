@@ -140,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="full">
                         <label>Ngarko imazh për produktin</label>
                         <input name="image_file" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
-                        <div class="help-text">Lejohen JPG, PNG ose WEBP, maksimumi 2 MB. JPG/PNG konvertohen automatikisht në WEBP kur serveri e mbështet.</div>
+                        <div class="help-text">Imazhi i produktit duhet të jetë patjetër 9:16, p.sh. 1080×1920. Lejohen JPG, PNG ose WEBP deri 10 MB; ruhet automatikisht si WEBP i optimizuar.</div>
                     </div>
                 </div>
 

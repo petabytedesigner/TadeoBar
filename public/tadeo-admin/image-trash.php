@@ -22,8 +22,8 @@ function ensure_image_trash_table(PDO $pdo): void
             name_en VARCHAR(180) NULL,
             deleted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
-            UNIQUE KEY original_path_unique (original_path),
             UNIQUE KEY trash_path_unique (trash_path),
+            KEY original_path_lookup (original_path),
             KEY deleted_at_lookup (deleted_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");

@@ -158,7 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="full">
                         <label>Ngarko / zëvendëso imazhin</label>
                         <input name="image_file" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
-                        <div class="help-text">Nëse nuk zgjedh imazh të ri, imazhi aktual mbetet i pandryshuar. JPG/PNG konvertohen automatikisht në WEBP kur serveri e mbështet.</div>
+                        <div class="help-text">Nëse nuk zgjedh imazh të ri, imazhi aktual mbetet i pandryshuar. Imazhi i produktit duhet të jetë patjetër 9:16, p.sh. 1080×1920. Lejohen JPG, PNG ose WEBP deri 10 MB; ruhet automatikisht si WEBP i optimizuar.</div>
 
                         <?php if (!empty($product['image_path'])): ?>
                             <div class="current-image">
