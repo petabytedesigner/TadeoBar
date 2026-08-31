@@ -61,7 +61,7 @@ Before deployment, run:
 bash scripts/preflight.sh
 ```
 
-The preflight checks required commands, local private configuration, critical recovery/security files, PHP syntax, and Git exclusions for private files.
+The preflight checks required commands, FTP configuration, critical recovery/security files, PHP syntax, and Git exclusions for private files. It intentionally does not require local MySQL credentials for an existing live installation.
 
 Deployment is handled by:
 
@@ -69,7 +69,9 @@ Deployment is handled by:
 scripts/deploy.sh
 ```
 
-`deploy.sh` automatically runs the same preflight before starting the FTPS mirror. It requires a local `.env` with FTP credentials and `public/includes/config.local.php` with the database configuration. `recovery.local.php` is generated on the server by the one-time recovery setup and is preserved by later deploys. All private files are excluded from Git.
+`deploy.sh` automatically runs the same preflight before starting the FTPS mirror. It requires only a local `.env` with FTP credentials. Existing server-side `public/includes/config.local.php` and `public/includes/recovery.local.php` are excluded from the mirror and preserved on the server, along with runtime uploads. All private files remain excluded from Git.
+
+For a brand-new server/restore, `config.local.php` must still be created on that server before the application can connect to MySQL.
 
 ## Project structure
 
