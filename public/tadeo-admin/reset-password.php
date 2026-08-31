@@ -46,6 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Password i ri | <?= e($barName) ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/assets/css/admin.css?v=20260831-password-recovery-1">
+    <link rel="stylesheet" href="/assets/css/password-recovery.css?v=20260831-1">
 </head>
 <body class="admin-login-page">
     <main class="login-card recovery-card">
