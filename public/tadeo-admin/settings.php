@@ -41,7 +41,7 @@ $errors = [];
 $selectedAccountAction = (string)($_POST['account_action'] ?? 'username');
 
 $settingsData = [
-    'bar_name' => setting_get($pdo, 'bar_name', 'Tadeo Bar'),
+    'bar_name' => setting_get($pdo, 'bar_name', 'Bar Tadeo'),
     'default_language' => setting_get($pdo, 'default_language', 'sq'),
     'currency' => setting_get($pdo, 'currency', 'ALL'),
     'show_prices' => setting_get($pdo, 'show_prices', '1'),
