@@ -8,6 +8,7 @@ require_once __DIR__ . '/smtp_mailer.php';
 const PASSWORD_RESET_CODE_TTL_MINUTES = 10;
 const PASSWORD_RESET_MAX_CODE_ATTEMPTS = 5;
 const PASSWORD_RESET_MAX_REQUESTS_PER_WINDOW = 3;
+const PASSWORD_RESET_MAX_GLOBAL_REQUESTS_PER_WINDOW = 10;
 const PASSWORD_RESET_RATE_WINDOW_MINUTES = 15;
 const PASSWORD_RESET_REQUEST_COOLDOWN_SECONDS = 60;
 
@@ -117,20 +118,29 @@ function password_reset_primary_admin(PDO $pdo): ?array
     return $row ?: null;
 }
 
+function password_reset_cleanup_old_rows(PDO $pdo): void
+{
+    $pdo->exec(
+        'DELETE FROM password_reset_codes '
+        . 'WHERE created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)'
+    );
+}
+
 function password_reset_rate_limit_message(PDO $pdo): ?string
 {
     $ipHash = password_reset_request_ip_hash();
 
     $stmt = $pdo->prepare(
-        'SELECT created_at FROM password_reset_codes '
+        'SELECT TIMESTAMPDIFF(SECOND, created_at, NOW()) AS age_seconds '
+        . 'FROM password_reset_codes '
         . 'WHERE request_ip_hash = ? ORDER BY id DESC LIMIT 1'
     );
     $stmt->execute([$ipHash]);
-    $lastCreated = $stmt->fetchColumn();
+    $ageSeconds = $stmt->fetchColumn();
 
-    if ($lastCreated !== false) {
-        $lastTimestamp = strtotime((string)$lastCreated);
-        if ($lastTimestamp !== false && (time() - $lastTimestamp) < PASSWORD_RESET_REQUEST_COOLDOWN_SECONDS) {
+    if ($ageSeconds !== false) {
+        $ageSeconds = (int)$ageSeconds;
+        if ($ageSeconds >= 0 && $ageSeconds < PASSWORD_RESET_REQUEST_COOLDOWN_SECONDS) {
             return 'Prit pak para se të kërkosh një kod tjetër.';
         }
     }
@@ -145,6 +155,15 @@ function password_reset_rate_limit_message(PDO $pdo): ?string
 
     if ((int)$stmt->fetchColumn() >= PASSWORD_RESET_MAX_REQUESTS_PER_WINDOW) {
         return 'Ka shumë kërkesa për rikuperim. Provo përsëri më vonë.';
+    }
+
+    $stmt = $pdo->query(
+        "SELECT COUNT(*) FROM password_reset_codes
+         WHERE created_at >= DATE_SUB(NOW(), INTERVAL {$windowMinutes} MINUTE)"
+    );
+
+    if ((int)$stmt->fetchColumn() >= PASSWORD_RESET_MAX_GLOBAL_REQUESTS_PER_WINDOW) {
+        return 'Sistemi i rikuperimit ka marrë shumë kërkesa. Provo përsëri më vonë.';
     }
 
     return null;
@@ -165,6 +184,8 @@ function password_reset_issue(PDO $pdo): int
         throw new RuntimeException('Nuk ka email rikuperimi të konfiguruar.');
     }
 
+    password_reset_cleanup_old_rows($pdo);
+
     $rateLimitMessage = password_reset_rate_limit_message($pdo);
     if ($rateLimitMessage !== null) {
         throw new RuntimeException($rateLimitMessage);
@@ -175,7 +196,7 @@ function password_reset_issue(PDO $pdo): int
         throw new RuntimeException('Nuk u gjet një llogari admin aktive për rikuperim.');
     }
 
-    $code = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    $code = (string)random_int(100000, 999999);
     $codeHash = password_hash($code, PASSWORD_DEFAULT);
 
     if ($codeHash === false) {
@@ -245,7 +266,8 @@ function password_reset_current_row(PDO $pdo, int $resetId): ?array
     }
 
     $stmt = $pdo->prepare(
-        'SELECT id, admin_id, code_hash, attempts, expires_at, used_at '
+        'SELECT id, admin_id, code_hash, attempts, expires_at, used_at, '
+        . 'TIMESTAMPDIFF(SECOND, NOW(), expires_at) AS seconds_remaining '
         . 'FROM password_reset_codes WHERE id = ? LIMIT 1'
     );
     $stmt->execute([$resetId]);
@@ -262,8 +284,7 @@ function password_reset_verify_code(PDO $pdo, int $resetId, string $code): array
         throw new RuntimeException('Kjo kërkesë rikuperimi nuk është më e vlefshme.');
     }
 
-    $expiresAt = strtotime((string)$row['expires_at']);
-    if ($expiresAt === false || $expiresAt < time()) {
+    if ((int)$row['seconds_remaining'] <= 0) {
         $stmt = $pdo->prepare('UPDATE password_reset_codes SET used_at = NOW() WHERE id = ?');
         $stmt->execute([$resetId]);
         throw new RuntimeException('Kodi ka skaduar. Kërko një kod të ri.');
@@ -324,6 +345,10 @@ function password_reset_complete(PDO $pdo, int $adminId, string $newPassword): v
 {
     if ($adminId <= 0) {
         throw new RuntimeException('Autorizimi për ndryshimin e password-it ka skaduar.');
+    }
+
+    if (strlen($newPassword) < 10) {
+        throw new RuntimeException('Password-i i ri duhet të ketë të paktën 10 karaktere.');
     }
 
     $hash = password_hash($newPassword, PASSWORD_DEFAULT);
