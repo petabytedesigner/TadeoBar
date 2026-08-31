@@ -20,8 +20,7 @@ command -v lftp >/dev/null 2>&1 || fail "lftp is not installed"
 ok "Required commands are available"
 
 [ -f ".env" ] || fail ".env file not found"
-[ -f "public/includes/config.local.php" ] || fail "public/includes/config.local.php not found"
-ok "Private deployment files exist"
+ok "Private FTP configuration file exists"
 
 set -a
 # shellcheck disable=SC1091
@@ -32,24 +31,6 @@ set +a
 [ -n "${FTP_USER:-}" ] || fail "FTP_USER is missing in .env"
 [ -n "${FTP_PASS:-}" ] || fail "FTP_PASS is missing in .env"
 ok "FTP configuration is present"
-
-php -l public/includes/config.local.php >/dev/null || fail "config.local.php has invalid PHP syntax"
-
-php -r '
-require "public/includes/config.local.php";
-foreach (["DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASS"] as $name) {
-    if (!defined($name)) {
-        fwrite(STDERR, "Missing DB constant: {$name}\n");
-        exit(1);
-    }
-    $value = trim((string) constant($name));
-    if ($value === "" || str_contains($value, "YOUR_")) {
-        fwrite(STDERR, "Invalid DB value for: {$name}\n");
-        exit(1);
-    }
-}
-' || fail "Database configuration is incomplete"
-ok "Database configuration is complete"
 
 required_files=(
   "public/includes/.htaccess"
@@ -84,8 +65,8 @@ php_files_checked=0
 while IFS= read -r -d '' file; do
   php -l "$file" >/dev/null || fail "PHP syntax error: $file"
   php_files_checked=$((php_files_checked + 1))
-done < <(find public -type f -name '*.php' -print0)
-ok "PHP syntax passed for ${php_files_checked} files"
+done < <(find public -type f -name '*.php' ! -name 'config.local.php' ! -name 'recovery.local.php' -print0)
+ok "PHP syntax passed for ${php_files_checked} tracked application files"
 
 if [ -d .git ] && command -v git >/dev/null 2>&1; then
   git check-ignore -q .env || fail ".env is not ignored by Git"
@@ -115,4 +96,5 @@ else
   echo "WARNING: .git metadata not found; Git tracking checks were skipped."
 fi
 
+echo "NOTE: Server-side includes/config.local.php is intentionally preserved by deploy.sh."
 echo "===== Preflight passed ====="
