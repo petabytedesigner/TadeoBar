@@ -1,10 +1,10 @@
-# Tadeo Bar — Restore Guide
+# Bar Tadeo — Restore Guide
 
-Ky dokument shpjegon si të rikthehet projekti Tadeo Bar në një host të ri ose pas humbjes së instalimit ekzistues.
+Ky dokument shpjegon si të rikthehet projekti Bar Tadeo në një host të ri ose pas humbjes së instalimit ekzistues.
 
 ## 1. Çfarë ruhet në GitHub
 
-Repo përmban kodin e aplikacionit, asetet publike, imazhet e menusë që janë commit-uar dhe seed-in e sanitizuar të menusë.
+Repo përmban kodin e aplikacionit, asetet publike, imazhet e menusë që janë commit-uar, schema-n e databazës dhe seed-in e sanitizuar të menusë.
 
 Elementet private nuk duhet të ruhen në GitHub:
 
@@ -12,7 +12,8 @@ Elementet private nuk duhet të ruhen në GitHub:
 - `public/includes/config.local.php`
 - kredencialet FTP
 - kredencialet e databazës
-- password-e admin në tekst të thjeshtë
+- password-e admin ose password hash-e reale nga instalimi live
+- password-i real i WiFi
 
 `.gitignore` i projektit i përjashton `.env` dhe `public/includes/config.local.php`.
 
@@ -79,7 +80,7 @@ const DB_PASS = 'YOUR_DB_PASSWORD';
 
 Mos bëj commit këtë file.
 
-**E rëndësishme:** krijoje `config.local.php` përpara deploy-it. `scripts/deploy.sh` përdor mirror me `--delete`; në një restore nuk duhet të nisësh deploy pa konfigurimin lokal që kërkon instalimi.
+**E rëndësishme:** krijoje `config.local.php` përpara deploy-it. `scripts/deploy.sh` ndalon nëse ky file mungon dhe nuk nis FTP mirror-in pa konfigurimin lokal të databazës.
 
 ## 6. Rikthe databazën
 
@@ -87,7 +88,7 @@ Mos bëj commit këtë file.
 
 Për rikthim 100% të aplikacionit përdor export-in final të plotë të databazës nga backup-i final.
 
-Full DB backup duhet të rikthejë tabelat që përdor aplikacioni, përfshirë të paktën:
+Full DB backup duhet të rikthejë këto tabela:
 
 - `admins`
 - `login_attempts`
@@ -96,20 +97,74 @@ Full DB backup duhet të rikthejë tabelat që përdor aplikacioni, përfshirë 
 - `settings`
 - `visits`
 - `image_trash`
+- `image_detach_history`
 
 Importoje export-in e plotë në databazën e re me phpMyAdmin ose mjetin e hostit.
 
-### `database/seed/tadeobar-menu.sql`
+Pas importit të full backup mund të ekzekutosh edhe `database/schema.sql`; script-i është ndërtuar që të krijojë vetëm strukturat që mungojnë dhe të shtojë kolonat e njohura të runtime-it kur mungojnë.
 
-Repo përmban edhe:
+### Schema e repo-s: `database/schema.sql`
+
+Repo përmban:
 
 ```text
-database/seed/tadeobar-menu.sql
+database/schema.sql
 ```
 
-Ky është **sanitized menu seed**, jo backup i plotë i aplikacionit. Ai përmban vetëm kategoritë dhe produktet e menusë dhe nuk përmban admin, login attempts, settings, visits, image trash, WiFi password ose kredenciale.
+Ky është schema i plotë i aplikacionit dhe përmban strukturën e tabelave që përdor kodi aktual:
 
-Prandaj seed-i përdoret si fallback për rikthimin e menusë, jo si zëvendësim i full DB backup.
+- `categories`
+- `products`
+- `admins`
+- `login_attempts`
+- `settings`
+- `visits`
+- `image_trash`
+- `image_detach_history`
+
+Schema përfshin gjithashtu kolonat që versionet e vjetra mund t'i krijonin gjatë runtime-it, përfshirë:
+
+- `categories.icon_image_path`
+- `products.deleted_at`
+
+Ai nuk përmban llogari admin, password hash real, WiFi password, vizita, trash records ose kredenciale.
+
+### Fallback pa full DB backup
+
+Nëse nuk ke full database export dhe duhet të rindërtosh instalimin vetëm nga repo:
+
+1. Krijo një databazë bosh.
+2. Importo `database/seed/tadeobar-menu.sql` për kategoritë dhe produktet e snapshot-it të ruajtur.
+3. Importo `database/schema.sql` pas seed-it. Kjo krijon tabelat e tjera dhe shton `products.deleted_at` nëse seed-i i vjetër nuk e ka.
+4. Krijo llogarinë admin me një password hash të ri.
+5. Hyr në Admin dhe vendos Settings + WiFi sipas instalimit real.
+
+Rendi **seed → schema** është i qëllimshëm për fallback restore, sepse menu seed-i i vjetër rikrijon tabelat `categories` dhe `products`; schema pastaj i sjell ato në strukturën që pret kodi aktual.
+
+### `database/seed/tadeobar-menu.sql`
+
+Ky file është një **sanitized menu snapshot i gjeneruar më 17 maj 2026**, jo export-i final live i menusë.
+
+Ai përmban vetëm kategoritë dhe produktet e snapshot-it dhe nuk përmban admin, login attempts, settings, visits, image trash, WiFi password ose kredenciale.
+
+Prandaj përdoret vetëm si fallback. Kur të bëhet backup-i final live, export-i final i DB-së është burimi autoritativ për restore të plotë.
+
+### Krijimi i adminit në një restore pa full backup
+
+Mos ruaj password admin në tekst të thjeshtë në repo. Gjenero hash lokalisht me PHP:
+
+```bash
+php -r "echo password_hash('PASSWORD_I_RI', PASSWORD_DEFAULT), PHP_EOL;"
+```
+
+Pastaj përdor hash-in e prodhuar vetëm në databazën private:
+
+```sql
+INSERT INTO admins (username, password_hash, is_active)
+VALUES ('admin', 'HASH_I_GJENERUAR', 1);
+```
+
+Ndrysho menjëherë username/password nga Admin → Cilësimet nëse ke përdorur vlera të përkohshme gjatë restore-it.
 
 ## 7. Rikthe imazhet
 
@@ -152,7 +207,7 @@ bye
 LFTP
 ```
 
-Folderët `uploads/trash/...` janë të dhëna runtime. Në restore normal mund të fillojnë bosh, përveç rastit kur po rikthen një backup të plotë të trash-it dhe tabelës `image_trash`.
+Folderët `uploads/trash/...` janë të dhëna runtime. Në restore normal mund të fillojnë bosh, përveç rastit kur po rikthen një backup të plotë të trash-it bashkë me tabelën `image_trash`.
 
 ## 8. Deploy kodin
 
@@ -223,14 +278,14 @@ Në Admin → Paneli ekziston edhe `Run cleanup now`. Butoni manual përdor të 
 
 Për restore të plotë mbaj jashtë GitHub një backup të sigurt me:
 
-- full database export
+- full database export live
 - `public/includes/config.local.php`
 - kredencialet FTP të ruajtura në mënyrë private
 - `public/uploads/products/`
 - `public/uploads/categories/`
 - trash uploads + `image_trash` vetëm nëse kërkohet rikthim i historikut të koshit
 
-GitHub mbetet burimi i kodit, por nuk duhet të përdoret për ruajtjen e sekreteve.
+GitHub mbetet burimi i kodit dhe schema-s, por nuk duhet të përdoret për ruajtjen e sekreteve.
 
 ## 14. Verifikim final
 
