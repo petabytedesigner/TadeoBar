@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/admin_header.php';
+require_once __DIR__ . '/../includes/password_recovery.php';
 
 $admin = require_admin();
 $pdo = db();
@@ -47,6 +48,11 @@ $settingsData = [
     'show_prices' => setting_get($pdo, 'show_prices', '1'),
 ];
 
+$recoveryEmail = recovery_user_email($pdo);
+$protectedEmail = protected_recovery_email();
+$protectedEnabled = protected_recovery_enabled($pdo);
+$protectedCodeConfigured = protected_recovery_code_configured();
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_verify()) {
         $errors[] = 'Kontrolli i sigurisë dështoi. Rifresko faqen dhe provo përsëri.';
@@ -79,6 +85,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 $messages[] = 'Cilësimet u ruajtën me sukses.';
+            }
+        }
+
+        if ($formType === 'recovery_email') {
+            $submittedRecoveryEmail = strtolower(trim((string)($_POST['recovery_email'] ?? '')));
+            $currentPassword = (string)($_POST['current_password'] ?? '');
+            $adminRow = current_admin_row($pdo, (int)$admin['id']);
+
+            if ($adminRow === null) {
+                $errors[] = 'Llogaria e adminit nuk u gjet.';
+            } elseif ($currentPassword === '' || !password_verify($currentPassword, (string)$adminRow['password_hash'])) {
+                $errors[] = 'Password-i aktual nuk është i saktë.';
+            } elseif (!filter_var($submittedRecoveryEmail, FILTER_VALIDATE_EMAIL)) {
+                $errors[] = 'Vendos një email rikuperimi të vlefshëm.';
+            } else {
+                recovery_setting_save($pdo, 'recovery_email', $submittedRecoveryEmail);
+                $recoveryEmail = $submittedRecoveryEmail;
+                $messages[] = 'Email-i i rikuperimit u ruajt me sukses.';
+            }
+        }
+
+        if ($formType === 'protected_recovery') {
+            admin_session_start();
+            $now = time();
+            $lockedUntil = (int)($_SESSION['protected_recovery_locked_until'] ?? 0);
+            $specialCode = trim((string)($_POST['protected_recovery_code'] ?? ''));
+
+            if ($protectedEmail === '') {
+                $errors[] = 'Email-i i mbrojtur nuk është konfiguruar ende në konfigurimin privat.';
+            } elseif (!$protectedCodeConfigured) {
+                $errors[] = 'Kodi i mbrojtjes nuk është konfiguruar ende në konfigurimin privat.';
+            } elseif ($lockedUntil > $now) {
+                $errors[] = 'Ka shumë tentativa të gabuara për kodin e mbrojtjes. Provo përsëri më vonë.';
+            } elseif (!verify_protected_recovery_code($specialCode)) {
+                $failures = (int)($_SESSION['protected_recovery_failures'] ?? 0) + 1;
+                $_SESSION['protected_recovery_failures'] = $failures;
+
+                if ($failures >= 5) {
+                    $_SESSION['protected_recovery_failures'] = 0;
+                    $_SESSION['protected_recovery_locked_until'] = $now + 900;
+                    $errors[] = 'Kodi i mbrojtjes është i gabuar. Veprimi u bllokua për 15 minuta.';
+                } else {
+                    $errors[] = 'Kodi i mbrojtjes nuk është i saktë.';
+                }
+            } elseif ($protectedEnabled && $recoveryEmail === '') {
+                $errors[] = 'Vendos fillimisht email-in tjetër të rikuperimit para se të çaktivizosh email-in e mbrojtur.';
+            } else {
+                unset($_SESSION['protected_recovery_failures'], $_SESSION['protected_recovery_locked_until']);
+                $protectedEnabled = !$protectedEnabled;
+                recovery_setting_save(
+                    $pdo,
+                    'protected_recovery_enabled',
+                    $protectedEnabled ? '1' : '0'
+                );
+
+                $messages[] = $protectedEnabled
+                    ? 'Email-i i mbrojtur i rikuperimit u riaktivizua.'
+                    : 'Email-i i mbrojtur i rikuperimit u çaktivizua.';
             }
         }
 
@@ -142,7 +206,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="utf-8">
     <title>Cilësimet | <?= e(site_bar_name()) ?> Admin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-admin-header-actions-2">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260831-password-recovery-1">
+    <link rel="stylesheet" href="/assets/css/password-recovery.css?v=20260831-1">
     <style>
         .settings-stack {
             display: grid;
@@ -226,6 +291,86 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         <button type="submit">Ruaj cilësimet</button>
                     </form>
+                </section>
+
+                <section class="form-card">
+                    <h2 class="settings-card-title">Rikuperimi i password-it</h2>
+                    <p class="admin-muted">
+                        Kodi 6-shifror i Forgot Password dërgohet te email-i më poshtë dhe te email-i i mbrojtur kur ai është aktiv.
+                    </p>
+
+                    <form method="post">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="form_type" value="recovery_email">
+
+                        <div class="form-grid">
+                            <div class="full">
+                                <label>Email-i i rikuperimit</label>
+                                <input
+                                    name="recovery_email"
+                                    type="email"
+                                    value="<?= e($recoveryEmail) ?>"
+                                    autocomplete="email"
+                                    placeholder="email@example.com"
+                                    required
+                                >
+                                <div class="help-text">Ky email mund të ndryshohet nga paneli.</div>
+                            </div>
+
+                            <div class="full">
+                                <label>Password aktual</label>
+                                <input name="current_password" type="password" autocomplete="current-password" required>
+                                <div class="help-text">Kërkohet për të ndryshuar email-in e rikuperimit.</div>
+                            </div>
+                        </div>
+
+                        <button type="submit">Ruaj email-in e rikuperimit</button>
+                    </form>
+
+                    <div class="settings-divider"></div>
+
+                    <div class="protected-recovery-box">
+                        <strong>Email i mbrojtur i rikuperimit</strong>
+                        <?php if ($protectedEmail !== ''): ?>
+                            <div class="protected-recovery-address"><?= e($protectedEmail) ?></div>
+                            <span class="recovery-status <?= $protectedEnabled ? 'recovery-status-active' : 'recovery-status-disabled' ?>">
+                                <?= $protectedEnabled ? 'Aktiv' : 'Çaktivizuar' ?>
+                            </span>
+                        <?php else: ?>
+                            <div class="protected-recovery-address">Nuk është konfiguruar ende.</div>
+                        <?php endif; ?>
+
+                        <div class="help-text">
+                            Adresa nuk mund të editohet nga paneli. Ndryshohet vetëm nga konfigurimi privat i serverit.
+                        </div>
+                    </div>
+
+                    <?php if ($protectedEmail === '' || !$protectedCodeConfigured): ?>
+                        <div class="recovery-config-warning">
+                            Përpara aktivizimit final duhen vendosur PROTECTED_RECOVERY_EMAIL dhe PROTECTED_RECOVERY_CODE_HASH te config.local.php.
+                        </div>
+                    <?php else: ?>
+                        <form method="post" autocomplete="off">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="form_type" value="protected_recovery">
+
+                            <label>Kodi i mbrojtjes</label>
+                            <input
+                                name="protected_recovery_code"
+                                type="password"
+                                inputmode="numeric"
+                                autocomplete="off"
+                                required
+                            >
+                            <div class="help-text">
+                                Kërkohet vetëm për të <?= $protectedEnabled ? 'çaktivizuar' : 'riaktivizuar' ?> email-in e mbrojtur.
+                            </div>
+
+                            <button class="<?= $protectedEnabled ? 'btn-danger' : '' ?>" type="submit">
+                                <?= $protectedEnabled ? 'Çaktivizo email-in e mbrojtur' : 'Riaktivizo email-in e mbrojtur' ?>
+                            </button>
+                        </form>
+                    <?php endif; ?>
                 </section>
 
                 <section class="form-card">
