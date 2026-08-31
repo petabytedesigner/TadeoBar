@@ -19,23 +19,33 @@ The admin login includes a Gmail SMTP password-recovery flow:
 - the code expires after 10 minutes and is stored only as a hash
 - the editable recovery email is managed from Admin → Settings
 - the protected recovery email is read-only in the panel and can only be enabled/disabled with a private protection code
-- Gmail SMTP credentials, Google App Password and protected recovery configuration stay in `public/includes/config.local.php` and are never committed
+- Gmail SMTP credentials and protected recovery secrets stay in `public/includes/recovery.local.php` and are never committed
 
-A non-secret template is available at:
+Initial live configuration is performed from the authenticated one-time page:
+
+```text
+/tadeo-admin/recovery-setup.php
+```
+
+The setup page requires the current admin password, tests Gmail SMTP/TLS/authentication, sends a test message to both recovery destinations, ensures the password-reset DB table exists, hashes the private protection code, and only then creates `recovery.local.php`. Once completed, the setup page refuses to overwrite the existing recovery configuration and can be deleted after live verification.
+
+Database credentials remain separate in:
+
+```text
+public/includes/config.local.php
+```
+
+A non-secret DB template is available at:
 
 ```text
 public/includes/config.local.example.php
 ```
 
-Copy it to `config.local.php` locally and replace the placeholders with the private server values. Never commit the real file.
-
-For an existing live database, the password-recovery feature can be enabled with the focused idempotent migration:
+For manual/fallback database upgrades, the focused idempotent migration remains available at:
 
 ```text
 database/migrations/20260831-password-recovery.sql
 ```
-
-The migration only creates the password-reset table and the non-sensitive protected-recovery status setting; it does not modify menu products or categories.
 
 ## Hosting
 
@@ -51,14 +61,14 @@ Deployment is handled by:
 scripts/deploy.sh
 ```
 
-The deploy script requires a local `.env` with FTP credentials and `public/includes/config.local.php` with the database/SMTP configuration. Both files are intentionally excluded from Git.
+The deploy script requires a local `.env` with FTP credentials and `public/includes/config.local.php` with the database configuration. `recovery.local.php` is generated on the server by the one-time recovery setup and is preserved by later deploys. All private files are excluded from Git.
 
 ## Project structure
 
 ```text
 public/                 Public PHP application and assets
-public/tadeo-admin/     Admin panel + Forgot Password flow
-public/includes/        Shared PHP helpers, recovery logic and SMTP client
+public/tadeo-admin/     Admin panel + Forgot Password + one-time recovery setup
+public/includes/        Shared PHP helpers, DB config loader, recovery logic and SMTP client
 database/schema.sql     Complete non-secret application schema
 database/migrations/   Focused upgrade scripts for existing installations
 database/seed/          Sanitized historical menu snapshot
