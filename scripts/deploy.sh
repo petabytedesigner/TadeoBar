@@ -10,17 +10,9 @@ CONFIG_FILE="public/includes/config.local.php"
 
 if [ ! -f "$CONFIG_FILE" ]; then
   echo "ERROR: $CONFIG_FILE not found"
-  echo "Create the local database and recovery configuration before deploying."
+  echo "Create the local database configuration before deploying."
   exit 1
 fi
-
-for required_const in SMTP_USERNAME SMTP_PASSWORD PROTECTED_RECOVERY_EMAIL PROTECTED_RECOVERY_CODE_HASH; do
-  if ! grep -Eq "const[[:space:]]+${required_const}[[:space:]]*=" "$CONFIG_FILE"; then
-    echo "ERROR: ${required_const} is missing from $CONFIG_FILE"
-    echo "Complete the private Gmail password-recovery configuration before deploying."
-    exit 1
-  fi
-done
 
 set -a
 source .env
@@ -35,7 +27,7 @@ if [ -z "${FTP_HOST:-}" ] || [ -z "${FTP_USER:-}" ] || [ -z "${FTP_PASS:-}" ]; t
 fi
 
 echo "Deploying $LOCAL_DIR to $FTP_HOST:$REMOTE_DIR"
-echo "Preserving uploaded product, category, and trash images on server..."
+echo "Preserving uploaded images and private recovery config on server..."
 
 lftp -u "$FTP_USER","$FTP_PASS" "$FTP_HOST" <<LFTP
 set cmd:fail-exit yes
@@ -44,6 +36,7 @@ set ftp:ssl-protect-data true
 set ftp:passive-mode true
 set ssl:verify-certificate yes
 mirror -R --delete --verbose --no-perms \
+  --exclude-glob includes/recovery.local.php \
   --exclude-glob uploads/products/*.jpg \
   --exclude-glob uploads/products/*.jpeg \
   --exclude-glob uploads/products/*.png \
