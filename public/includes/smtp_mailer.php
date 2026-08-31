@@ -4,7 +4,7 @@ declare(strict_types=1);
 /**
  * Minimal SMTP client for Bar Tadeo password-recovery email.
  *
- * Secrets are read from public/includes/config.local.php through constants.
+ * Runtime secrets are loaded from private local configuration files.
  * Nothing sensitive is stored in this tracked file.
  */
 
@@ -28,11 +28,27 @@ function smtp_port(): int
     return $port > 0 ? $port : 587;
 }
 
+function smtp_runtime_config(): array
+{
+    $username = smtp_config_value('SMTP_USERNAME');
+
+    return [
+        'host' => smtp_config_value('SMTP_HOST', 'smtp.gmail.com'),
+        'port' => smtp_port(),
+        'username' => $username,
+        'password' => smtp_config_value('SMTP_PASSWORD'),
+        'from_email' => smtp_config_value('SMTP_FROM_EMAIL', $username),
+        'from_name' => smtp_config_value('SMTP_FROM_NAME', 'Bar Tadeo'),
+    ];
+}
+
 function smtp_is_configured(): bool
 {
-    return smtp_config_value('SMTP_HOST', 'smtp.gmail.com') !== ''
-        && smtp_config_value('SMTP_USERNAME') !== ''
-        && smtp_config_value('SMTP_PASSWORD') !== '';
+    $config = smtp_runtime_config();
+
+    return trim((string)$config['host']) !== ''
+        && trim((string)$config['username']) !== ''
+        && trim((string)$config['password']) !== '';
 }
 
 function smtp_read_response($socket): string
@@ -122,22 +138,30 @@ function smtp_normalize_body(string $body): string
 
 function smtp_send_text_email(string $recipient, string $subject, string $body): void
 {
+    smtp_send_text_email_with_config(smtp_runtime_config(), $recipient, $subject, $body);
+}
+
+function smtp_send_text_email_with_config(array $config, string $recipient, string $subject, string $body): void
+{
     $recipient = trim($recipient);
+    $host = trim((string)($config['host'] ?? 'smtp.gmail.com'));
+    $port = (int)($config['port'] ?? 587);
+    $username = trim((string)($config['username'] ?? ''));
+    $password = str_replace(' ', '', trim((string)($config['password'] ?? '')));
+    $fromEmail = trim((string)($config['from_email'] ?? $username));
+    $fromName = trim((string)($config['from_name'] ?? 'Bar Tadeo'));
 
     if (!filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
         throw new RuntimeException('Adresa e email-it marrës nuk është e vlefshme.');
     }
 
-    if (!smtp_is_configured()) {
-        throw new RuntimeException('SMTP nuk është konfiguruar ende.');
+    if ($host === '' || $port <= 0 || $username === '' || $password === '') {
+        throw new RuntimeException('SMTP nuk është konfiguruar plotësisht.');
     }
 
-    $host = smtp_config_value('SMTP_HOST', 'smtp.gmail.com');
-    $port = smtp_port();
-    $username = smtp_config_value('SMTP_USERNAME');
-    $password = str_replace(' ', '', smtp_config_value('SMTP_PASSWORD'));
-    $fromEmail = smtp_config_value('SMTP_FROM_EMAIL', $username);
-    $fromName = smtp_config_value('SMTP_FROM_NAME', 'Bar Tadeo');
+    if (!filter_var($username, FILTER_VALIDATE_EMAIL)) {
+        throw new RuntimeException('SMTP username duhet të jetë një adresë email e vlefshme.');
+    }
 
     if (!filter_var($fromEmail, FILTER_VALIDATE_EMAIL)) {
         throw new RuntimeException('SMTP sender email nuk është i vlefshëm.');
