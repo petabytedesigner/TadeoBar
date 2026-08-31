@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /tadeo-admin/
+Disallow: /includes/
+Disallow: /api/
+Disallow: /system-pages/
+Disallow: /uploads/trash/
+
+Sitemap: https://tadeobar.gt.tc/sitemap.xml
