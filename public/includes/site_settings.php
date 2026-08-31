@@ -25,5 +25,5 @@ function site_setting_get(string $key, string $default = ''): string
 
 function site_bar_name(): string
 {
-    return site_setting_get('bar_name', 'Tadeo Bar');
+    return site_setting_get('bar_name', 'Bar Tadeo');
 }
