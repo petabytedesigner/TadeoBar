@@ -2,10 +2,35 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/csrf.php';
+require_once __DIR__ . '/../includes/trash_cleanup.php';
 require_once __DIR__ . '/../includes/admin_header.php';
 
 $admin = require_admin();
 $pdo = db();
+
+$cleanupMessage = '';
+$cleanupError = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'run_cleanup') {
+    if (!csrf_verify()) {
+        $cleanupError = 'Kontrolli i sigurisë dështoi. Rifresko faqen dhe provo përsëri.';
+    } else {
+        try {
+            $deletedProducts = trash_cleanup_products($pdo);
+            $deletedImages = trash_cleanup_images($pdo);
+            trash_cleanup_mark_run();
+
+            $cleanupMessage = 'Cleanup u krye. Produkte të fshira përgjithmonë: '
+                . $deletedProducts
+                . '. Imazhe të fshira përgjithmonë: '
+                . $deletedImages
+                . '.';
+        } catch (Throwable $e) {
+            $cleanupError = 'Cleanup nuk u krye dot. Provo përsëri ose kontrollo serverin.';
+        }
+    }
+}
 
 $activeProducts = (int)$pdo->query("SELECT COUNT(*) FROM products WHERE is_active = 1")->fetchColumn();
 $hiddenProducts = (int)$pdo->query("SELECT COUNT(*) FROM products WHERE is_active = 0")->fetchColumn();
@@ -82,7 +107,8 @@ $last7 = dashboard_visit_count_between($pdo, $last7StartDate, $todayDate);
             margin-top: 16px;
         }
 
-        .dashboard-actions .btn {
+        .dashboard-actions .btn,
+        .dashboard-actions button {
             width: 100%;
             min-height: 52px;
             display: inline-flex;
@@ -90,14 +116,42 @@ $last7 = dashboard_visit_count_between($pdo, $last7StartDate, $todayDate);
             justify-content: center;
         }
 
-        .dashboard-note {
+        .dashboard-cleanup-form {
+            grid-column: 1 / -1;
+            margin: 0;
+        }
+
+        .dashboard-cleanup-form button {
+            cursor: pointer;
+        }
+
+        .dashboard-note,
+        .dashboard-cleanup-result,
+        .dashboard-cleanup-error {
             margin-top: 16px;
             padding: 14px;
             border-radius: 16px;
+            line-height: 1.55;
+        }
+
+        .dashboard-note {
             background: rgba(243, 201, 109, .08);
             border: 1px solid rgba(243, 201, 109, .18);
             color: var(--muted);
-            line-height: 1.55;
+        }
+
+        .dashboard-cleanup-result {
+            background: rgba(107, 196, 127, .10);
+            border: 1px solid rgba(107, 196, 127, .32);
+            color: #b7f5c5;
+            font-weight: 800;
+        }
+
+        .dashboard-cleanup-error {
+            background: rgba(214, 69, 69, .10);
+            border: 1px solid rgba(214, 69, 69, .35);
+            color: #ffb6b6;
+            font-weight: 800;
         }
 
         @media (max-width: 860px) {
@@ -118,6 +172,14 @@ $last7 = dashboard_visit_count_between($pdo, $last7StartDate, $todayDate);
         <main>
             <h1 class="admin-title">Paneli</h1>
             <p class="admin-muted">Përmbledhje e menusë, kategorive dhe vizitorëve.</p>
+
+            <?php if ($cleanupMessage !== ''): ?>
+                <div class="dashboard-cleanup-result"><?= e($cleanupMessage) ?></div>
+            <?php endif; ?>
+
+            <?php if ($cleanupError !== ''): ?>
+                <div class="dashboard-cleanup-error"><?= e($cleanupError) ?></div>
+            <?php endif; ?>
 
             <section class="grid">
                 <article class="stat-card">
@@ -198,6 +260,16 @@ $last7 = dashboard_visit_count_between($pdo, $last7StartDate, $todayDate);
                         <a class="btn btn-secondary" href="/tadeo-admin/wifi.php">WiFi</a>
                         <a class="btn btn-secondary" href="/tadeo-admin/analytics.php">Analitika</a>
                         <a class="btn btn-secondary" href="/tadeo-admin/settings.php">Cilësimet</a>
+
+                        <form class="dashboard-cleanup-form" method="post" onsubmit="return confirm('Cleanup do të fshijë përgjithmonë vetëm produkte dhe imazhe që kanë mbi 30 ditë në kosh. Të vazhdoj?');">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="run_cleanup">
+                            <button class="btn btn-secondary" type="submit">Run cleanup now</button>
+                        </form>
+                    </div>
+
+                    <div class="dashboard-note">
+                        Cleanup manual përdor të njëjtin rregull 30-ditor si cleanup automatik. Produktet dhe imazhet më të reja në kosh nuk preken.
                     </div>
                 </article>
             </section>
