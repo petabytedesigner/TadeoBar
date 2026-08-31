@@ -1,8 +1,14 @@
 <?php
 declare(strict_types=1);
 
-const AUDIT_PRODUCT_IMAGE_MAX_BYTES = 512000;
+const AUDIT_PRODUCT_IMAGE_WARNING_BYTES = 512000;
+const AUDIT_PRODUCT_IMAGE_MAX_BYTES = 819200;
 const AUDIT_CATEGORY_IMAGE_MAX_BYTES = 512000;
+
+const AUDIT_PRODUCT_RATIO_MIN = 0.55;
+const AUDIT_PRODUCT_RATIO_MAX = 0.82;
+const AUDIT_PRODUCT_MIN_WIDTH = 600;
+const AUDIT_PRODUCT_MIN_HEIGHT = 1000;
 
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/admin_header.php';
@@ -87,6 +93,44 @@ function audit_uploaded_images(string $folder): array
     return $items;
 }
 
+function audit_scan_dangerous_upload_files(): array
+{
+    $base = dirname(__DIR__) . '/uploads';
+    $dangerousExtensions = ['php', 'phtml', 'phar', 'js', 'html', 'htm'];
+    $items = [];
+
+    if (!is_dir($base)) {
+        return [];
+    }
+
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($base, FilesystemIterator::SKIP_DOTS)
+    );
+
+    foreach ($iterator as $file) {
+        if (!$file instanceof SplFileInfo || !$file->isFile()) {
+            continue;
+        }
+
+        $filename = $file->getFilename();
+        if ($filename === '.htaccess') {
+            continue;
+        }
+
+        $ext = strtolower($file->getExtension());
+        if (!in_array($ext, $dangerousExtensions, true)) {
+            continue;
+        }
+
+        $absolute = $file->getPathname();
+        $items[] = 'uploads/' . ltrim(str_replace('\\', '/', substr($absolute, strlen($base))), '/');
+    }
+
+    sort($items);
+
+    return $items;
+}
+
 function audit_human_file_size(int $bytes): string
 {
     if ($bytes <= 0) {
@@ -141,16 +185,36 @@ function audit_dimensions_label(array $meta): string
     return (string)$meta['width'] . '×' . (string)$meta['height'];
 }
 
-function audit_is_exact_nine_sixteen(array $meta): bool
+function audit_product_image_policy_issues(array $meta): array
 {
     $width = $meta['width'] ?? null;
     $height = $meta['height'] ?? null;
+    $issues = [];
 
     if (!is_int($width) || !is_int($height) || $width <= 0 || $height <= 0) {
-        return false;
+        return [[
+            'title' => 'Dimensionet e imazhit të produktit nuk lexohen',
+            'detail' => 'dimensione të palexueshme',
+        ]];
     }
 
-    return $width * 16 === $height * 9;
+    $ratio = $width / $height;
+
+    if ($ratio < AUDIT_PRODUCT_RATIO_MIN || $ratio > AUDIT_PRODUCT_RATIO_MAX) {
+        $issues[] = [
+            'title' => 'Imazh produkti jashtë raportit të lejuar',
+            'detail' => audit_dimensions_label($meta) . ' → raport ' . number_format($ratio, 3) . ' / lejohet 0.55–0.82',
+        ];
+    }
+
+    if ($width < AUDIT_PRODUCT_MIN_WIDTH || $height < AUDIT_PRODUCT_MIN_HEIGHT) {
+        $issues[] = [
+            'title' => 'Imazh produkti me dimensione të vogla',
+            'detail' => audit_dimensions_label($meta) . ' / minimumi ' . AUDIT_PRODUCT_MIN_WIDTH . '×' . AUDIT_PRODUCT_MIN_HEIGHT,
+        ];
+    }
+
+    return $issues;
 }
 
 function audit_add(array &$bucket, string $severity, string $title, string $detail): void
@@ -348,16 +412,25 @@ foreach ($products as $product) {
         } else {
             if (!$meta['readable']) {
                 audit_add($warnings, 'warning', 'Dimensionet e imazhit të produktit nuk lexohen', $label . ' → ' . $imagePath);
-            } elseif (!audit_is_exact_nine_sixteen($meta)) {
-                audit_add($warnings, 'warning', 'Imazh produkti jo 9:16', $label . ' → ' . $imagePath . ' → ' . audit_dimensions_label($meta));
+            } else {
+                foreach (audit_product_image_policy_issues($meta) as $issue) {
+                    audit_add($warnings, 'warning', $issue['title'], $label . ' → ' . $imagePath . ' → ' . $issue['detail']);
+                }
             }
 
             if ((int)$meta['size'] > AUDIT_PRODUCT_IMAGE_MAX_BYTES) {
                 audit_add(
                     $warnings,
                     'warning',
-                    'Imazh produkti mbi 500 KB',
+                    'Imazh produkti mbi limitin maksimal 800 KB',
                     $label . ' → ' . $imagePath . ' → ' . audit_human_file_size((int)$meta['size']) . ' / limit ' . audit_human_file_size(AUDIT_PRODUCT_IMAGE_MAX_BYTES)
+                );
+            } elseif ((int)$meta['size'] > AUDIT_PRODUCT_IMAGE_WARNING_BYTES) {
+                audit_add(
+                    $warnings,
+                    'warning',
+                    'Imazh produkti mbi 500 KB',
+                    $label . ' → ' . $imagePath . ' → ' . audit_human_file_size((int)$meta['size']) . ' / syno 150–350 KB'
                 );
             }
         }
@@ -424,6 +497,8 @@ $trashImages = array_merge(
     audit_uploaded_images('trash/categories')
 );
 
+$dangerousUploadFiles = audit_scan_dangerous_upload_files();
+
 $missingDbFiles = 0;
 foreach ($warnings as $warning) {
     if (str_contains($warning['title'], 'mungon në server')) {
@@ -449,6 +524,10 @@ if (count($trashImages) > 0) {
 
 if ($trashedProducts > 0) {
     audit_add($info, 'info', 'Produkte në kosh', (string)$trashedProducts . ' produkte kanë deleted_at dhe nuk shfaqen në menunë publike.');
+}
+
+if (count($dangerousUploadFiles) > 0) {
+    audit_add($warnings, 'warning', 'File të rrezikshme në uploads', (string)count($dangerousUploadFiles) . ' file kanë extension që nuk duhet të jetë në uploads.');
 }
 
 $totalProducts = count($products);
@@ -500,6 +579,25 @@ function audit_render_path_list(array $paths, string $emptyText): void
         <article class="audit-item audit-info">
             <strong><?= e($path) ?></strong>
             <p><?= e(implode(' · ', $detailParts)) ?></p>
+        </article>
+        <?php
+    }
+}
+
+function audit_render_plain_path_list(array $paths, string $emptyText): void
+{
+    if ($paths === []) {
+        ?>
+        <div class="audit-empty"><?= e($emptyText) ?></div>
+        <?php
+        return;
+    }
+
+    foreach ($paths as $path) {
+        ?>
+        <article class="audit-item audit-warning">
+            <strong><?= e($path) ?></strong>
+            <p>Ky file nuk duhet të jetë në uploads. Lejohen vetëm imazhe dhe .htaccess mbrojtës.</p>
         </article>
         <?php
     }
@@ -628,7 +726,7 @@ function audit_render_path_list(array $paths, string $emptyText): void
             </div>
 
             <div class="audit-note">
-                Ky audit nuk ndryshon databazën dhe nuk fshin file. Kontrollon vetëm konsistencën mes DB-së, uploads dhe rregullave të imazheve.
+                Ky audit nuk ndryshon databazën dhe nuk fshin file. Produktet pranohen me raport portrait 0.55–0.82, minimum 600×1000 px; mbi 500 KB shfaqet si paralajmërim dhe mbi 800 KB si limit maksimal.
             </div>
 
             <section class="audit-summary">
@@ -641,8 +739,8 @@ function audit_render_path_list(array $paths, string $emptyText): void
                 <article class="stat-card"><small>File DB që mungojnë</small><strong><?= e($missingDbFiles) ?></strong></article>
                 <article class="stat-card"><small>File të palidhura</small><strong><?= e(count($unusedImages)) ?></strong></article>
                 <article class="stat-card"><small>Imazhe në kosh</small><strong><?= e(count($trashImages)) ?></strong></article>
+                <article class="stat-card"><small>File të rrezikshme</small><strong><?= e(count($dangerousUploadFiles)) ?></strong></article>
                 <article class="stat-card"><small>Produkte aktive</small><strong><?= e($activeProducts) ?></strong></article>
-                <article class="stat-card"><small>Produkte të fshehura</small><strong><?= e($hiddenProducts) ?></strong></article>
                 <article class="stat-card"><small>Kategori aktive</small><strong><?= e($activeCategories) ?></strong></article>
             </section>
 
@@ -678,6 +776,13 @@ function audit_render_path_list(array $paths, string $emptyText): void
                 <h2>Imazhe në kosh</h2>
                 <div class="audit-list">
                     <?php audit_render_path_list($trashImages, 'Nuk u gjetën imazhe në uploads/trash.'); ?>
+                </div>
+            </section>
+
+            <section class="audit-section">
+                <h2>File të rrezikshme në uploads</h2>
+                <div class="audit-list">
+                    <?php audit_render_plain_path_list($dangerousUploadFiles, 'Nuk u gjetën file të rrezikshme në uploads.'); ?>
                 </div>
             </section>
 
