@@ -158,7 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="full">
                         <label>Ngarko / zëvendëso imazhin</label>
                         <input name="image_file" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
-                        <div class="help-text">Nëse nuk zgjedh imazh të ri, imazhi aktual mbetet i pandryshuar. Imazhi i produktit duhet të jetë patjetër 9:16, p.sh. 1080×1920. Lejohen JPG, PNG ose WEBP deri 10 MB; ruhet automatikisht si WEBP i optimizuar.</div>
+                        <div class="help-text">Nëse nuk zgjedh imazh të ri, imazhi aktual mbetet i pandryshuar. Imazhi i produktit duhet të jetë portrait. Lejohen raporte nga 9:16 deri afërsisht 4:5, p.sh. 720×1280, 900×1350, 1080×1620 ose 1080×1920. Syno 150–350 KB; mbi 500 KB është i rëndë, ndërsa maksimumi final është 800 KB. Lejohen JPG, PNG ose WEBP deri 10 MB; ruhet automatikisht si WEBP i optimizuar.</div>
 
                         <?php if (!empty($product['image_path'])): ?>
                             <div class="current-image">
