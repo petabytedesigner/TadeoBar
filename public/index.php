@@ -114,7 +114,7 @@ function public_wifi_payload(string $ssid, string $password, string $security): 
 }
 
 $settings = [
-    'bar_name' => 'Tadeo Bar',
+    'bar_name' => 'Bar Tadeo',
     'default_language' => 'sq',
     'currency' => 'ALL',
     'show_prices' => '1',
@@ -181,7 +181,7 @@ try {
     $pageError = 'Menuja nuk u ngarkua. Ju lutemi provoni përsëri pak më vonë.';
 }
 
-$barName = trim($settings['bar_name']) !== '' ? $settings['bar_name'] : 'Tadeo Bar';
+$barName = trim($settings['bar_name']) !== '' ? $settings['bar_name'] : 'Bar Tadeo';
 $defaultLang = $settings['default_language'];
 $currency = trim($settings['currency']) !== '' ? trim($settings['currency']) : 'ALL';
 $showPrices = $settings['show_prices'] !== '0';
@@ -190,8 +190,8 @@ $wifiPayload = public_wifi_payload($settings['wifi_ssid'], $settings['wifi_passw
 $siteUrl = 'https://tadeobar.gt.tc/';
 $seoTitle = $barName . ' | Digital Menu';
 $seoDescription = $defaultLang === 'sq'
-    ? 'Shfleto menunë digjitale të ' . $barName . ' dhe lidhu me WiFi.'
-    : 'Browse the digital menu of ' . $barName . ' and connect to WiFi.';
+    ? 'Shfleto menunë digjitale të ' . $barName . ' në Durrës dhe lidhu me WiFi.'
+    : 'Browse the digital menu of ' . $barName . ' in Durrës and connect to WiFi.';
 $seoImageUrl = $siteUrl . 'uploads/categories/coffee.webp';
 $seoLocale = $defaultLang === 'sq' ? 'sq_AL' : 'en_US';
 $structuredData = [
@@ -201,7 +201,29 @@ $structuredData = [
     'url' => $siteUrl,
     'image' => $seoImageUrl,
     'hasMenu' => $siteUrl,
+    'telephone' => '+355686622333',
     'currenciesAccepted' => $currency,
+    'address' => [
+        '@type' => 'PostalAddress',
+        'streetAddress' => 'Flag Ship',
+        'addressLocality' => 'Durrës',
+        'postalCode' => '2003',
+        'addressCountry' => 'AL',
+    ],
+    'openingHoursSpecification' => [[
+        '@type' => 'OpeningHoursSpecification',
+        'dayOfWeek' => [
+            'Monday',
+            'Tuesday',
+            'Wednesday',
+            'Thursday',
+            'Friday',
+            'Saturday',
+            'Sunday',
+        ],
+        'opens' => '06:00',
+        'closes' => '22:30',
+    ]],
 ];
 ?>
 <!doctype html>
