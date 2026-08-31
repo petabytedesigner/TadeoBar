@@ -99,11 +99,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Ndrysho Produkt | <?= e(site_bar_name()) ?> Admin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-admin-header-actions-2">
+    <link rel="stylesheet" href="/assets/css/product-image-preview.css?v=20260831-1">
 </head>
 <body>
     <div class="admin-layout">
-
-        
         <?php render_admin_header($admin, 'products'); ?>
 
         <main>
@@ -157,8 +156,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <div class="full">
                         <label>Ngarko / zëvendëso imazhin</label>
-                        <input name="image_file" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+                        <input
+                            name="image_file"
+                            type="file"
+                            accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                            data-product-image-input
+                            data-preview-target="productImagePreview"
+                        >
                         <div class="help-text">Nëse nuk zgjedh imazh të ri, imazhi aktual mbetet i pandryshuar. Imazhi i produktit duhet të jetë portrait. Lejohen raporte nga 9:16 deri afërsisht 4:5, p.sh. 720×1280, 900×1350, 1080×1620 ose 1080×1920. Syno 150–350 KB; mbi 500 KB është i rëndë, ndërsa maksimumi final është 800 KB. Lejohen JPG, PNG ose WEBP deri 10 MB; ruhet automatikisht si WEBP i optimizuar.</div>
+
+                        <div class="product-image-preview" id="productImagePreview" aria-live="polite" hidden>
+                            <div class="product-image-preview-grid">
+                                <div class="product-image-preview-media">
+                                    <img data-preview-image alt="Preview i imazhit">
+                                </div>
+                                <div class="product-image-preview-details">
+                                    <div class="product-image-preview-status is-loading" data-preview-status>Po kontrollohet imazhi…</div>
+                                    <dl class="product-image-preview-meta">
+                                        <div><dt>File</dt><dd data-preview-name>—</dd></div>
+                                        <div><dt>Format</dt><dd data-preview-type>—</dd></div>
+                                        <div><dt>Dimensione</dt><dd data-preview-dimensions>—</dd></div>
+                                        <div><dt>Ratio W/H</dt><dd data-preview-ratio>—</dd></div>
+                                        <div><dt>Madhësia burim</dt><dd data-preview-size>—</dd></div>
+                                    </dl>
+                                    <p class="product-image-preview-note">Preview kontrollon file-in burim. Serveri bën optimizimin final WEBP dhe validimin përfundimtar gjatë ruajtjes.</p>
+                                </div>
+                            </div>
+                        </div>
 
                         <?php if (!empty($product['image_path'])): ?>
                             <div class="current-image">
@@ -178,5 +202,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
         </main>
     </div>
+
+    <script src="/assets/js/product-image-preview.js?v=20260831-1" defer></script>
 </body>
 </html>
