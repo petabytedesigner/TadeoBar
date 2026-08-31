@@ -1,18 +1,10 @@
 #!/data/data/com.termux/files/usr/bin/bash
 set -euo pipefail
 
-if [ ! -f ".env" ]; then
-  echo "ERROR: .env file not found"
-  exit 1
-fi
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT_DIR"
 
-CONFIG_FILE="public/includes/config.local.php"
-
-if [ ! -f "$CONFIG_FILE" ]; then
-  echo "ERROR: $CONFIG_FILE not found"
-  echo "Create the local database configuration before deploying."
-  exit 1
-fi
+./scripts/preflight.sh
 
 set -a
 source .env
@@ -20,11 +12,6 @@ set +a
 
 LOCAL_DIR="public"
 REMOTE_DIR="/htdocs"
-
-if [ -z "${FTP_HOST:-}" ] || [ -z "${FTP_USER:-}" ] || [ -z "${FTP_PASS:-}" ]; then
-  echo "ERROR: FTP_HOST, FTP_USER, or FTP_PASS is missing in .env"
-  exit 1
-fi
 
 echo "Deploying $LOCAL_DIR to $FTP_HOST:$REMOTE_DIR"
 echo "Preserving uploaded images and private recovery config on server..."
