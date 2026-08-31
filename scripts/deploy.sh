@@ -6,6 +6,12 @@ if [ ! -f ".env" ]; then
   exit 1
 fi
 
+if [ ! -f "public/includes/config.local.php" ]; then
+  echo "ERROR: public/includes/config.local.php not found"
+  echo "Create the local database configuration before deploying."
+  exit 1
+fi
+
 set -a
 source .env
 set +a
