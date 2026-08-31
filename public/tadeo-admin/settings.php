@@ -208,8 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="utf-8">
     <title>Cilësimet | <?= e(site_bar_name()) ?> Admin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260831-password-recovery-1">
-    <link rel="stylesheet" href="/assets/css/password-recovery.css?v=20260831-1">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-admin-header-actions-2">
     <style>
         .settings-stack {
             display: grid;
@@ -331,15 +330,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <div class="settings-divider"></div>
 
-                    <div class="protected-recovery-box">
+                    <div class="panel">
                         <strong>Email i mbrojtur i rikuperimit</strong>
                         <?php if ($protectedEmail !== ''): ?>
-                            <div class="protected-recovery-address"><?= e($protectedEmail) ?></div>
-                            <span class="recovery-status <?= $protectedEnabled ? 'recovery-status-active' : 'recovery-status-disabled' ?>">
+                            <p><?= e($protectedEmail) ?></p>
+                            <span class="badge <?= $protectedEnabled ? 'badge-active' : 'badge-hidden' ?>">
                                 <?= $protectedEnabled ? 'Aktiv' : 'Çaktivizuar' ?>
                             </span>
                         <?php else: ?>
-                            <div class="protected-recovery-address">Nuk është konfiguruar ende.</div>
+                            <p>Nuk është konfiguruar ende.</p>
                         <?php endif; ?>
 
                         <div class="help-text">
@@ -348,7 +347,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <?php if ($protectedEmail === '' || !$protectedCodeConfigured): ?>
-                        <div class="recovery-config-warning">
+                        <div class="msg">
                             Përpara aktivizimit final duhen vendosur PROTECTED_RECOVERY_EMAIL dhe PROTECTED_RECOVERY_CODE_HASH te config.local.php.
                         </div>
                     <?php else: ?>
