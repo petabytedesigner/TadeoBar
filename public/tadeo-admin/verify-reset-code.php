@@ -41,11 +41,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="utf-8">
     <title>Verifiko kodin | <?= e($barName) ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260831-password-recovery-1">
-    <link rel="stylesheet" href="/assets/css/password-recovery.css?v=20260831-1">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-admin-header-actions-2">
 </head>
 <body class="admin-login-page">
-    <main class="login-card recovery-card">
+    <main class="login-card">
         <h1>Vendos kodin</h1>
         <p>
             Kontrollo email-et e rikuperimit dhe vendos kodin 6-shifror që sapo u dërgua.
@@ -61,7 +60,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label for="resetCode">Kodi 6-shifror</label>
             <input
                 id="resetCode"
-                class="recovery-code-input"
                 name="code"
                 value="<?= e($code) ?>"
                 inputmode="numeric"
@@ -75,8 +73,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <button type="submit">Verifiko kodin</button>
         </form>
 
-        <a class="btn btn-secondary recovery-secondary-action" href="/tadeo-admin/forgot-password.php">Kërko kod të ri</a>
-        <a class="recovery-text-link" href="/tadeo-admin/login.php">Kthehu te hyrja</a>
+        <a class="btn btn-secondary" href="/tadeo-admin/forgot-password.php">Kërko kod të ri</a>
+        <a class="btn btn-secondary" href="/tadeo-admin/login.php">Kthehu te hyrja</a>
     </main>
 </body>
 </html>
