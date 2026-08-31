@@ -186,16 +186,54 @@ $defaultLang = $settings['default_language'];
 $currency = trim($settings['currency']) !== '' ? trim($settings['currency']) : 'ALL';
 $showPrices = $settings['show_prices'] !== '0';
 $wifiPayload = public_wifi_payload($settings['wifi_ssid'], $settings['wifi_password'], $settings['wifi_security']);
+
+$siteUrl = 'https://tadeobar.gt.tc/';
+$seoTitle = $barName . ' | Digital Menu';
+$seoDescription = $defaultLang === 'sq'
+    ? 'Shfleto menunë digjitale të ' . $barName . ' dhe lidhu me WiFi.'
+    : 'Browse the digital menu of ' . $barName . ' and connect to WiFi.';
+$seoImageUrl = $siteUrl . 'uploads/categories/coffee.webp';
+$seoLocale = $defaultLang === 'sq' ? 'sq_AL' : 'en_US';
+$structuredData = [
+    '@context' => 'https://schema.org',
+    '@type' => ['BarOrPub', 'CafeOrCoffeeShop'],
+    'name' => $barName,
+    'url' => $siteUrl,
+    'image' => $seoImageUrl,
+    'hasMenu' => $siteUrl,
+    'currenciesAccepted' => $currency,
+];
 ?>
 <!doctype html>
 <html lang="<?= e($defaultLang) ?>">
 <head>
     <meta charset="utf-8">
-    <title><?= e($barName) ?> | Menu</title>
+    <title><?= e($seoTitle) ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#070707">
+    <meta name="description" content="<?= e($seoDescription) ?>">
+    <meta name="robots" content="index, follow, max-image-preview:large">
+
+    <link rel="canonical" href="<?= e($siteUrl) ?>">
     <link rel="icon" href="/favicon.ico">
-    <meta name="description" content="<?= e($barName) ?> digital menu and WiFi access.">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="<?= e($barName) ?>">
+    <meta property="og:title" content="<?= e($seoTitle) ?>">
+    <meta property="og:description" content="<?= e($seoDescription) ?>">
+    <meta property="og:url" content="<?= e($siteUrl) ?>">
+    <meta property="og:image" content="<?= e($seoImageUrl) ?>">
+    <meta property="og:image:type" content="image/webp">
+    <meta property="og:image:alt" content="<?= e($barName) ?> digital menu">
+    <meta property="og:locale" content="<?= e($seoLocale) ?>">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="<?= e($seoTitle) ?>">
+    <meta name="twitter:description" content="<?= e($seoDescription) ?>">
+    <meta name="twitter:image" content="<?= e($seoImageUrl) ?>">
+
+    <script type="application/ld+json"><?= json_encode($structuredData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?></script>
+
     <link rel="stylesheet" href="/assets/css/public-menu.css?v=20260518-product-css-cleanup-v1">
 </head>
 <body>
