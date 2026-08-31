@@ -6,16 +6,17 @@ require_once __DIR__ . '/helpers.php';
 const PRODUCT_UPLOAD_MAX_BYTES = 10485760; // 10 MB source file
 const CATEGORY_UPLOAD_MAX_BYTES = 10485760; // 10 MB source file
 
-const PRODUCT_FINAL_WEBP_MAX_BYTES = 512000; // 500 KB final product image
+const PRODUCT_FINAL_WEBP_WARNING_BYTES = 512000; // 500 KB target warning
+const PRODUCT_FINAL_WEBP_MAX_BYTES = 819200; // 800 KB hard limit for final product image
 const CATEGORY_FINAL_WEBP_MAX_BYTES = 716800; // 700 KB final category image
 
-const PRODUCT_TARGET_WIDTH = 1080;
-const PRODUCT_TARGET_HEIGHT = 1920;
+const PRODUCT_MAX_DIMENSION = 1920;
+const PRODUCT_MIN_WIDTH = 600;
+const PRODUCT_MIN_HEIGHT = 1000;
 const CATEGORY_MAX_DIMENSION = 1600;
 
-const PRODUCT_RATIO_WIDTH = 9;
-const PRODUCT_RATIO_HEIGHT = 16;
-const PRODUCT_RATIO_TOLERANCE = 0.02; // 2%
+const PRODUCT_RATIO_MIN = 0.55;
+const PRODUCT_RATIO_MAX = 0.82;
 
 function slugify_filename(string $value): string
 {
@@ -140,14 +141,19 @@ function upload_validate_product_ratio(int $width, int $height): void
         throw new RuntimeException('Dimensionet e imazhit nuk janë të vlefshme.');
     }
 
-    $actualRatio = $width / $height;
-    $targetRatio = PRODUCT_RATIO_WIDTH / PRODUCT_RATIO_HEIGHT;
-    $difference = abs($actualRatio - $targetRatio) / $targetRatio;
-
-    if ($difference > PRODUCT_RATIO_TOLERANCE) {
+    if ($width < PRODUCT_MIN_WIDTH || $height < PRODUCT_MIN_HEIGHT) {
         throw new RuntimeException(
-            'Imazhi i produktit duhet të jetë patjetër në format 9:16, p.sh. 1080×1920. ' .
-            'Ky format siguron që produkti të shfaqet mirë në telefon dhe PC.'
+            'Imazhi i produktit është shumë i vogël. Minimumi i lejuar është ' .
+            PRODUCT_MIN_WIDTH . '×' . PRODUCT_MIN_HEIGHT . ' px.'
+        );
+    }
+
+    $actualRatio = $width / $height;
+
+    if ($actualRatio < PRODUCT_RATIO_MIN || $actualRatio > PRODUCT_RATIO_MAX) {
+        throw new RuntimeException(
+            'Imazhi i produktit duhet të jetë portrait. Lejohen raporte nga 9:16 deri afërsisht 4:5 ' .
+            '(width/height 0.55–0.82). Shembuj të mirë: 720×1280, 900×1350, 1080×1620, 1080×1920.'
         );
     }
 }
@@ -255,15 +261,17 @@ function upload_optimize_to_webp(
     }
 
     if ($isProduct) {
-        $finalImage = upload_resize_image(
+        [$finalImage, , , $resized] = upload_resize_to_max_dimension(
             $source,
             $sourceWidth,
             $sourceHeight,
-            PRODUCT_TARGET_WIDTH,
-            PRODUCT_TARGET_HEIGHT
+            PRODUCT_MAX_DIMENSION
         );
         $finalMaxBytes = PRODUCT_FINAL_WEBP_MAX_BYTES;
-        imagedestroy($source);
+
+        if ($resized) {
+            imagedestroy($source);
+        }
     } else {
         [$finalImage, , , $resized] = upload_resize_to_max_dimension(
             $source,
@@ -283,7 +291,7 @@ function upload_optimize_to_webp(
 
     if (!$saved) {
         @unlink($target);
-        throw new RuntimeException('Imazhi nuk u optimizua dot brenda madhësisë së lejuar.');
+        throw new RuntimeException('Imazhi nuk u optimizua dot brenda limitit maksimal të lejuar. Përdor një imazh më të lehtë ose më të vogël.');
     }
 }
 
