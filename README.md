@@ -21,6 +21,22 @@ The admin login includes a Gmail SMTP password-recovery flow:
 - the protected recovery email is read-only in the panel and can only be enabled/disabled with a private protection code
 - Gmail SMTP credentials, Google App Password and protected recovery configuration stay in `public/includes/config.local.php` and are never committed
 
+A non-secret template is available at:
+
+```text
+public/includes/config.local.example.php
+```
+
+Copy it to `config.local.php` locally and replace the placeholders with the private server values. Never commit the real file.
+
+For an existing live database, the password-recovery feature can be enabled with the focused idempotent migration:
+
+```text
+database/migrations/20260831-password-recovery.sql
+```
+
+The migration only creates the password-reset table and the non-sensitive protected-recovery status setting; it does not modify menu products or categories.
+
 ## Hosting
 
 The contents of `public/` are deployed to InfinityFree under:
@@ -43,8 +59,8 @@ The deploy script requires a local `.env` with FTP credentials and `public/inclu
 public/                 Public PHP application and assets
 public/tadeo-admin/     Admin panel + Forgot Password flow
 public/includes/        Shared PHP helpers, recovery logic and SMTP client
-public/uploads/         Product/category images and trash folders
 database/schema.sql     Complete non-secret application schema
+database/migrations/   Focused upgrade scripts for existing installations
 database/seed/          Sanitized historical menu snapshot
 scripts/deploy.sh       FTPS deployment script
 RESTORE.md              Full restore/recovery guide
