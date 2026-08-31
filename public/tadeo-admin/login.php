@@ -13,6 +13,7 @@ $barName = site_bar_name();
 
 $error = '';
 $username = trim((string)($_POST['username'] ?? ''));
+$resetSuccess = (string)($_GET['reset'] ?? '') === 'success';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_verify()) {
@@ -46,12 +47,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="utf-8">
     <title>Hyrje Admin | <?= e($barName) ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-admin-header-actions-2">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260831-password-recovery-1">
+    <link rel="stylesheet" href="/assets/css/password-recovery.css?v=20260831-1">
 </head>
 <body class="admin-login-page">
     <main class="login-card">
         <h1><?= e($barName) ?></h1>
         <p>Hyrje në panelin e administrimit</p>
+
+        <?php if ($resetSuccess): ?>
+            <div class="msg">Password-i u ndryshua me sukses. Mund të hysh me password-in e ri.</div>
+        <?php endif; ?>
 
         <?php if ($error !== ''): ?>
             <div class="error"><?= e($error) ?></div>
@@ -68,6 +74,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <button type="submit">Hyr</button>
         </form>
+
+        <a class="login-forgot-link" href="/tadeo-admin/forgot-password.php">Harrove password-in?</a>
     </main>
 </body>
 </html>
