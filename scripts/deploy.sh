@@ -6,11 +6,21 @@ if [ ! -f ".env" ]; then
   exit 1
 fi
 
-if [ ! -f "public/includes/config.local.php" ]; then
-  echo "ERROR: public/includes/config.local.php not found"
-  echo "Create the local database configuration before deploying."
+CONFIG_FILE="public/includes/config.local.php"
+
+if [ ! -f "$CONFIG_FILE" ]; then
+  echo "ERROR: $CONFIG_FILE not found"
+  echo "Create the local database and recovery configuration before deploying."
   exit 1
 fi
+
+for required_const in SMTP_USERNAME SMTP_PASSWORD PROTECTED_RECOVERY_EMAIL PROTECTED_RECOVERY_CODE_HASH; do
+  if ! grep -Eq "const[[:space:]]+${required_const}[[:space:]]*=" "$CONFIG_FILE"; then
+    echo "ERROR: ${required_const} is missing from $CONFIG_FILE"
+    echo "Complete the private Gmail password-recovery configuration before deploying."
+    exit 1
+  fi
+done
 
 set -a
 source .env
