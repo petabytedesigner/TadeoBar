@@ -55,13 +55,21 @@ The contents of `public/` are deployed to InfinityFree under:
 /htdocs
 ```
 
+Before deployment, run:
+
+```bash
+bash scripts/preflight.sh
+```
+
+The preflight checks required commands, local private configuration, critical recovery/security files, PHP syntax, and Git exclusions for private files.
+
 Deployment is handled by:
 
 ```text
 scripts/deploy.sh
 ```
 
-The deploy script requires a local `.env` with FTP credentials and `public/includes/config.local.php` with the database configuration. `recovery.local.php` is generated on the server by the one-time recovery setup and is preserved by later deploys. All private files are excluded from Git.
+`deploy.sh` automatically runs the same preflight before starting the FTPS mirror. It requires a local `.env` with FTP credentials and `public/includes/config.local.php` with the database configuration. `recovery.local.php` is generated on the server by the one-time recovery setup and is preserved by later deploys. All private files are excluded from Git.
 
 ## Project structure
 
@@ -70,8 +78,9 @@ public/                 Public PHP application and assets
 public/tadeo-admin/     Admin panel + Forgot Password + one-time recovery setup
 public/includes/        Shared PHP helpers, DB config loader, recovery logic and SMTP client
 database/schema.sql     Complete non-secret application schema
-database/migrations/   Focused upgrade scripts for existing installations
+database/migrations/    Focused upgrade scripts for existing installations
 database/seed/          Sanitized historical menu snapshot
+scripts/preflight.sh    Final local checks before deployment
 scripts/deploy.sh       FTPS deployment script
 RESTORE.md              Full restore/recovery guide
 ```
