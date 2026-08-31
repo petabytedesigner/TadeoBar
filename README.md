@@ -10,6 +10,17 @@ Digital menu and WiFi website for Bar Tadeo in Durrës.
 - Languages: Albanian and English
 - Currency: ALL
 
+## Admin recovery
+
+The admin login includes a Gmail SMTP password-recovery flow:
+
+- no email or username is entered on the Forgot Password page
+- one random 6-digit code is sent to the configured recovery destinations
+- the code expires after 10 minutes and is stored only as a hash
+- the editable recovery email is managed from Admin → Settings
+- the protected recovery email is read-only in the panel and can only be enabled/disabled with a private protection code
+- Gmail SMTP credentials, Google App Password and protected recovery configuration stay in `public/includes/config.local.php` and are never committed
+
 ## Hosting
 
 The contents of `public/` are deployed to InfinityFree under:
@@ -24,14 +35,14 @@ Deployment is handled by:
 scripts/deploy.sh
 ```
 
-The deploy script requires a local `.env` with FTP credentials and `public/includes/config.local.php` with the database configuration. Both files are intentionally excluded from Git.
+The deploy script requires a local `.env` with FTP credentials and `public/includes/config.local.php` with the database/SMTP configuration. Both files are intentionally excluded from Git.
 
 ## Project structure
 
 ```text
 public/                 Public PHP application and assets
-public/tadeo-admin/     Admin panel
-public/includes/        Shared PHP helpers and configuration loader
+public/tadeo-admin/     Admin panel + Forgot Password flow
+public/includes/        Shared PHP helpers, recovery logic and SMTP client
 public/uploads/         Product/category images and trash folders
 database/schema.sql     Complete non-secret application schema
 database/seed/          Sanitized historical menu snapshot
@@ -41,7 +52,7 @@ RESTORE.md              Full restore/recovery guide
 
 ## Database recovery
 
-`database/schema.sql` defines the current application structure without storing real admin accounts, password hashes, WiFi passwords, visits, trash records, or credentials.
+`database/schema.sql` defines the current application structure without storing real admin accounts, password hashes, reset codes, WiFi passwords, visits, trash records, or credentials.
 
 `database/seed/tadeobar-menu.sql` is a sanitized menu snapshot generated on May 17, 2026. It is a fallback for menu recovery, not the authoritative final live database export.
 
