@@ -14,7 +14,7 @@ LOCAL_DIR="public"
 REMOTE_DIR="/htdocs"
 
 echo "Deploying $LOCAL_DIR to $FTP_HOST:$REMOTE_DIR"
-echo "Preserving uploaded images and private recovery config on server..."
+echo "Preserving server DB/recovery config and uploaded images..."
 
 lftp -u "$FTP_USER","$FTP_PASS" "$FTP_HOST" <<LFTP
 set cmd:fail-exit yes
@@ -23,6 +23,7 @@ set ftp:ssl-protect-data true
 set ftp:passive-mode true
 set ssl:verify-certificate yes
 mirror -R --delete --verbose --no-perms \
+  --exclude-glob includes/config.local.php \
   --exclude-glob includes/recovery.local.php \
   --exclude-glob uploads/products/*.jpg \
   --exclude-glob uploads/products/*.jpeg \
