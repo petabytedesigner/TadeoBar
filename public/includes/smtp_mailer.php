@@ -68,13 +68,25 @@ function smtp_expect(string $response, array $allowedCodes): void
     }
 }
 
+function smtp_write_all($socket, string $data): void
+{
+    $length = strlen($data);
+    $offset = 0;
+
+    while ($offset < $length) {
+        $written = fwrite($socket, substr($data, $offset));
+
+        if ($written === false || $written === 0) {
+            throw new RuntimeException('Nuk u dërguan dot të dhënat te SMTP serveri.');
+        }
+
+        $offset += $written;
+    }
+}
+
 function smtp_write_line($socket, string $line): void
 {
-    $written = fwrite($socket, $line . "\r\n");
-
-    if ($written === false) {
-        throw new RuntimeException('Nuk u dërgua dot komanda SMTP.');
-    }
+    smtp_write_all($socket, $line . "\r\n");
 }
 
 function smtp_command($socket, string $command, array $allowedCodes): string
@@ -88,6 +100,8 @@ function smtp_command($socket, string $command, array $allowedCodes): string
 
 function smtp_encoded_header(string $value): string
 {
+    $value = str_replace(["\r", "\n"], ' ', $value);
+
     return '=?UTF-8?B?' . base64_encode($value) . '?=';
 }
 
@@ -194,10 +208,7 @@ function smtp_send_text_email(string $recipient, string $subject, string $body):
             . smtp_normalize_body($body)
             . "\r\n.\r\n";
 
-        if (fwrite($socket, $payload) === false) {
-            throw new RuntimeException('Email-i nuk u dërgua dot te SMTP serveri.');
-        }
-
+        smtp_write_all($socket, $payload);
         smtp_expect(smtp_read_response($socket), [250]);
 
         try {
