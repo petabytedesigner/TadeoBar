@@ -3,6 +3,11 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/config.local.php';
 
+$recoveryConfigFile = __DIR__ . '/recovery.local.php';
+if (is_file($recoveryConfigFile)) {
+    require_once $recoveryConfigFile;
+}
+
 function db(): PDO
 {
     static $pdo = null;
