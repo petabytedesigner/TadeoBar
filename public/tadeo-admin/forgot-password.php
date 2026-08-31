@@ -31,18 +31,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="utf-8">
     <title>Rikupero password-in | <?= e($barName) ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260831-password-recovery-1">
-    <link rel="stylesheet" href="/assets/css/password-recovery.css?v=20260831-1">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-admin-header-actions-2">
 </head>
 <body class="admin-login-page">
-    <main class="login-card recovery-card">
+    <main class="login-card">
         <h1>Rikupero password-in</h1>
         <p>
             Do të dërgojmë të njëjtin kod verifikimi 6-shifror në email-et e rikuperimit
             të konfiguruara për panelin e <?= e($barName) ?>.
         </p>
 
-        <div class="recovery-notice">
+        <div class="msg">
             Kodi është i vlefshëm për 10 minuta dhe mund të përdoret vetëm një herë.
         </div>
 
@@ -55,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <button type="submit">Vazhdo dhe dërgo kodin</button>
         </form>
 
-        <a class="btn btn-secondary recovery-secondary-action" href="/tadeo-admin/login.php">Anulo</a>
+        <a class="btn btn-secondary" href="/tadeo-admin/login.php">Anulo</a>
     </main>
 </body>
 </html>
