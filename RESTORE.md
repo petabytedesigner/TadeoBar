@@ -12,6 +12,8 @@ Elementet private nuk duhet të ruhen në GitHub:
 - `public/includes/config.local.php`
 - kredencialet FTP
 - kredencialet e databazës
+- Gmail SMTP App Password
+- protected recovery email/code hash
 - password-e admin ose password hash-e reale nga instalimi live
 - password-i real i WiFi
 
@@ -24,6 +26,7 @@ Për rikthim duhen:
 - PHP me PDO MySQL
 - MySQL/MariaDB
 - mbështetje GD për JPG/PNG/WEBP (`imagewebp`, `imagecreatefromjpeg`, `imagecreatefrompng`, `imagecreatefromwebp`)
+- `stream_socket_client` + TLS për Gmail SMTP password recovery
 - FTP/FTPS për hostin
 - `git`
 - `lftp` nëse përdoret `scripts/deploy.sh`
@@ -63,7 +66,7 @@ Nëse password-i përmban karaktere speciale, mbaje vlerën të quotuar si më s
 
 ## 5. Krijo `public/includes/config.local.php`
 
-Aplikacioni e merr lidhjen me databazën nga ky file. Ai nuk ruhet në GitHub dhe duhet krijuar në çdo instalim të ri.
+Aplikacioni e merr lidhjen me databazën dhe sekretet e Gmail password recovery nga ky file. Ai nuk ruhet në GitHub dhe duhet krijuar në çdo instalim të ri.
 
 Shembull:
 
@@ -76,7 +79,29 @@ const DB_PORT = 3306;
 const DB_NAME = 'YOUR_DB_NAME';
 const DB_USER = 'YOUR_DB_USER';
 const DB_PASS = 'YOUR_DB_PASSWORD';
+
+const SMTP_HOST = 'smtp.gmail.com';
+const SMTP_PORT = 587;
+const SMTP_USERNAME = 'YOUR_GMAIL_ADDRESS';
+const SMTP_PASSWORD = 'YOUR_GOOGLE_APP_PASSWORD';
+const SMTP_FROM_EMAIL = 'YOUR_GMAIL_ADDRESS';
+const SMTP_FROM_NAME = 'Bar Tadeo';
+
+const PROTECTED_RECOVERY_EMAIL = 'YOUR_PROTECTED_RECOVERY_EMAIL';
+const PROTECTED_RECOVERY_CODE_HASH = 'YOUR_PASSWORD_HASH';
 ```
+
+`SMTP_PASSWORD` duhet të jetë Google App Password, jo password-i normal i Gmail-it.
+
+Për kodin privat që aktivizon/çaktivizon protected recovery email, ruaj vetëm hash-in. Gjeneroje lokalisht:
+
+```bash
+php -r "echo password_hash('YOUR_PROTECTED_CODE', PASSWORD_DEFAULT), PHP_EOL;"
+```
+
+Kopjo rezultatin te `PROTECTED_RECOVERY_CODE_HASH`. Mos ruaj kodin real në repo.
+
+Email-i i mbrojtur ndryshohet vetëm nga `config.local.php`; paneli nuk ka fushë për ta modifikuar. Email-i tjetër i rikuperimit vendoset nga Admin → Cilësimet.
 
 Mos bëj commit këtë file.
 
@@ -92,6 +117,7 @@ Full DB backup duhet të rikthejë këto tabela:
 
 - `admins`
 - `login_attempts`
+- `password_reset_codes`
 - `categories`
 - `products`
 - `settings`
@@ -117,6 +143,7 @@ Ky është schema i plotë i aplikacionit dhe përmban strukturën e tabelave q�
 - `products`
 - `admins`
 - `login_attempts`
+- `password_reset_codes`
 - `settings`
 - `visits`
 - `image_trash`
@@ -127,7 +154,7 @@ Schema përfshin gjithashtu kolonat që versionet e vjetra mund t'i krijonin gja
 - `categories.icon_image_path`
 - `products.deleted_at`
 
-Ai nuk përmban llogari admin, password hash real, WiFi password, vizita, trash records ose kredenciale.
+Ai nuk përmban llogari admin, password hash real, WiFi password, reset codes, vizita, trash records ose kredenciale.
 
 ### Fallback pa full DB backup
 
@@ -137,7 +164,7 @@ Nëse nuk ke full database export dhe duhet të rindërtosh instalimin vetëm ng
 2. Importo `database/seed/tadeobar-menu.sql` për kategoritë dhe produktet e snapshot-it të ruajtur.
 3. Importo `database/schema.sql` pas seed-it. Kjo krijon tabelat e tjera dhe shton `products.deleted_at` nëse seed-i i vjetër nuk e ka.
 4. Krijo llogarinë admin me një password hash të ri.
-5. Hyr në Admin dhe vendos Settings + WiFi sipas instalimit real.
+5. Hyr në Admin dhe vendos Settings + WiFi + recovery email sipas instalimit real.
 
 Rendi **seed → schema** është i qëllimshëm për fallback restore, sepse menu seed-i i vjetër rikrijon tabelat `categories` dhe `products`; schema pastaj i sjell ato në strukturën që pret kodi aktual.
 
@@ -166,7 +193,31 @@ VALUES ('admin', 'HASH_I_GJENERUAR', 1);
 
 Ndrysho menjëherë username/password nga Admin → Cilësimet nëse ke përdorur vlera të përkohshme gjatë restore-it.
 
-## 7. Rikthe imazhet
+## 7. Password recovery
+
+Rrjedha e rikuperimit është:
+
+1. Login → `Harrove password-in?`
+2. Përdoruesi konfirmon `Vazhdo` pa shkruar email ose username.
+3. Gjenerohet një kod random 6-shifror.
+4. I njëjti kod dërgohet veçmas te protected recovery email (kur është aktiv) dhe te recovery email i vendosur nga paneli.
+5. Kodi skadon pas 10 minutash dhe ruhet në DB vetëm si hash.
+6. Pas verifikimit vendoset password-i i ri.
+
+Mbrojtjet kryesore:
+
+- CSRF në çdo POST të recovery flow
+- maksimumi 3 kërkesa kodi për IP brenda 15 minutave
+- minimumi 60 sekonda ndërmjet kërkesave nga e njëjta IP
+- maksimumi 5 tentativa për kodin 6-shifror
+- kodi përdoret vetëm një herë
+- protected recovery email nuk editohet nga paneli
+- aktivizimi/çaktivizimi i protected email kërkon kodin privat dhe bllokohet për 15 minuta pas 5 gabimeve në të njëjtën admin session
+- Gmail App Password dhe protected code hash ruhen vetëm në `config.local.php`
+
+Për instalimin ekzistues, ekzekuto `database/schema.sql` përpara testimit të Forgot Password që tabela `password_reset_codes` të ekzistojë.
+
+## 8. Rikthe imazhet
 
 Repo përmban imazhet e commit-uara në:
 
@@ -209,7 +260,7 @@ LFTP
 
 Folderët `uploads/trash/...` janë të dhëna runtime. Në restore normal mund të fillojnë bosh, përveç rastit kur po rikthen një backup të plotë të trash-it bashkë me tabelën `image_trash`.
 
-## 8. Deploy kodin
+## 9. Deploy kodin
 
 Pasi `.env` dhe `config.local.php` janë gati:
 
@@ -226,7 +277,7 @@ public/ -> /htdocs/
 
 Dhe ruan imazhet runtime të produkteve, kategorive dhe trash-it nga fshirja gjatë deploy-eve normale.
 
-## 9. Kontrollo `.htaccess`
+## 10. Kontrollo `.htaccess`
 
 Pas restore kontrollo që `/htdocs/.htaccess` ekziston. Ai përmban:
 
@@ -237,7 +288,7 @@ Pas restore kontrollo që `/htdocs/.htaccess` ekziston. Ai përmban:
 
 Mos e ekspozo ose ndrysho përmes URL-së publike; verifikoje nga repo/FTP.
 
-## 10. Testet bazë pas restore
+## 11. Testet bazë pas restore
 
 Bëji këto teste me radhë:
 
@@ -250,11 +301,14 @@ Bëji këto teste me radhë:
 7. Hyr te `/tadeo-admin/`.
 8. Kontrollo dashboard-in.
 9. Kontrollo Products, Categories, Images, WiFi, Analytics dhe Settings.
-10. Hap `menu-audit.php` dhe kontrollo që nuk ka gabime kritike ose file DB që mungojnë.
-11. Testo një URL që nuk ekziston dhe verifiko error page dinamike.
-12. Testo upload-in e një imazhi vetëm nëse restore-i është verifikuar dhe ke backup.
+10. Vendos recovery email nga Settings dhe kontrollo protected recovery status.
+11. Testo Forgot Password dhe konfirmo që i njëjti kod arrin në të dy recovery email-et aktive.
+12. Testo ndryshimin e password-it me kodin 6-shifror.
+13. Hap `menu-audit.php` dhe kontrollo që nuk ka gabime kritike ose file DB që mungojnë.
+14. Testo një URL që nuk ekziston dhe verifiko error page dinamike.
+15. Testo upload-in e një imazhi vetëm nëse restore-i është verifikuar dhe ke backup.
 
-## 11. Kontrolli i uploads pas restore
+## 12. Kontrolli i uploads pas restore
 
 Nga Admin → Audit Menu kontrollo:
 
@@ -268,18 +322,20 @@ Nga Admin → Audit Menu kontrollo:
 
 Audit-i është read-only dhe nuk duhet të ndryshojë databazën.
 
-## 12. Cleanup
+## 13. Cleanup
 
 Cleanup automatik fshin vetëm produkte dhe imazhe që kanë kaluar më shumë se 30 ditë në kosh.
 
 Në Admin → Paneli ekziston edhe `Run cleanup now`. Butoni manual përdor të njëjtin kufi 30-ditor; nuk fshin elemente më të reja.
 
-## 13. Çfarë duhet të përmbajë backup-i final
+## 14. Çfarë duhet të përmbajë backup-i final
 
 Për restore të plotë mbaj jashtë GitHub një backup të sigurt me:
 
 - full database export live
 - `public/includes/config.local.php`
+- Gmail SMTP App Password
+- protected recovery email/code hash
 - kredencialet FTP të ruajtura në mënyrë private
 - `public/uploads/products/`
 - `public/uploads/categories/`
@@ -287,7 +343,7 @@ Për restore të plotë mbaj jashtë GitHub një backup të sigurt me:
 
 GitHub mbetet burimi i kodit dhe schema-s, por nuk duhet të përdoret për ruajtjen e sekreteve.
 
-## 14. Verifikim final
+## 15. Verifikim final
 
 Restore konsiderohet i përfunduar vetëm kur:
 
@@ -295,6 +351,7 @@ Restore konsiderohet i përfunduar vetëm kur:
 - admin login punon
 - databaza lidhet pa gabime
 - imazhet shfaqen
+- Gmail SMTP password recovery punon
 - `menu-audit.php` nuk raporton probleme kritike
 - `config.local.php` dhe `.env` nuk janë tracked në Git
 
