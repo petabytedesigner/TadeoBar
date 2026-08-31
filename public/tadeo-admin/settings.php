@@ -99,6 +99,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errors[] = 'Password-i aktual nuk është i saktë.';
             } elseif (!filter_var($submittedRecoveryEmail, FILTER_VALIDATE_EMAIL)) {
                 $errors[] = 'Vendos një email rikuperimi të vlefshëm.';
+            } elseif ($protectedEmail !== '' && strcasecmp($submittedRecoveryEmail, $protectedEmail) === 0) {
+                $errors[] = 'Email-i i rikuperimit duhet të jetë ndryshe nga email-i i mbrojtur.';
             } else {
                 recovery_setting_save($pdo, 'recovery_email', $submittedRecoveryEmail);
                 $recoveryEmail = $submittedRecoveryEmail;
