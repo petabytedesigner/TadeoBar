@@ -74,7 +74,7 @@ const DB_USER = 'YOUR_DB_USER';
 const DB_PASS = 'YOUR_DB_PASSWORD';
 ```
 
-Mos bëj commit këtë file. `scripts/deploy.sh` ndalon nëse ai mungon.
+Mos bëj commit këtë file. `scripts/deploy.sh` e ruan kopjen ekzistuese të serverit gjatë deploy-eve normale.
 
 ## 6. Rikthe databazën
 
@@ -86,6 +86,7 @@ Full DB backup duhet të rikthejë këto tabela:
 
 - `admins`
 - `login_attempts`
+- `security_ip_guard`
 - `password_reset_codes`
 - `categories`
 - `products`
@@ -94,19 +95,27 @@ Full DB backup duhet të rikthejë këto tabela:
 - `image_trash`
 - `image_detach_history`
 
-Pas importit mund të ekzekutosh `database/schema.sql`; ai është ndërtuar të krijojë vetëm strukturat që mungojnë dhe të shtojë kolonat e njohura të runtime-it kur mungojnë.
+Pas importit mund të ekzekutosh `database/schema.sql`; ai është ndërtuar të krijojë strukturat që mungojnë dhe të shtojë kolonat e njohura të runtime-it kur mungojnë.
+
+`security_ip_guard` përmban vetëm hash-e të IP-ve dhe state të përkohshëm të mbrojtjes; nuk përmban IP raw.
 
 ### Schema e repo-s
 
 `database/schema.sql` përmban strukturën aktuale të aplikacionit pa kredenciale ose të dhëna sensitive.
 
-Për një instalim live ekzistues ku kërkohet vetëm Forgot Password, ekziston edhe migration-i i fokusuar:
+Për një instalim live ekzistues ku kërkohet vetëm Forgot Password, ekziston migration-i i fokusuar:
 
 ```text
 database/migrations/20260831-password-recovery.sql
 ```
 
-Megjithatë, faqja njëpërdorimëshe `recovery-setup.php` gjithashtu krijon automatikisht `password_reset_codes` nëse tabela mungon.
+Për brute-force/IP guard ekziston migration-i:
+
+```text
+database/migrations/20260901-security-ip-guard.sql
+```
+
+Guard-i gjithashtu krijon automatikisht `security_ip_guard` në runtime nëse tabela mungon, ndërsa `recovery-setup.php` krijon automatikisht `password_reset_codes` nëse ajo mungon.
 
 ### Fallback pa full DB backup
 
@@ -183,7 +192,22 @@ Rrjedha finale është:
 
 Mbrojtjet përfshijnë CSRF, rate limiting, maksimum 5 tentativa për kod, single-use reset code dhe kod privat për aktivizim/çaktivizim të protected recovery email.
 
-## 9. Rikthe imazhet
+## 9. Brute-force / IP guard
+
+Login-i ka dy nivele mbrojtjeje server-side:
+
+- 5 tentativa të dështuara për të njëjtin username + IP brenda 10 minutave aktivizojnë soft guard-in ekzistues;
+- tentativa e dështuar vazhdon të regjistrohet edhe gjatë soft guard-it;
+- 15 login-e të dështuara nga e njëjta IP brenda dritares 24-orëshe aktivizojnë hard block 24 orë;
+- counter-i i hard guard është IP-only, pra ndryshimi i username-it nuk e anashkalon;
+- login i suksesshëm reseton counter-in e hard guard;
+- ruhet vetëm SHA-256 hash i IP-së, jo IP raw;
+- IP e bllokuar merr përgjigje neutrale `404 Not Found` dhe nuk i shfaqet arsyeja, pragu ose koha e bllokimit;
+- IP-të e tjera nuk preken.
+
+Guard-i ngarkohet nga `public/includes/db.php`, prandaj bllokimi aplikohet në route-t dinamike publike, API dhe admin/recovery që përdorin databazën.
+
+## 10. Rikthe imazhet
 
 Repo përmban imazhet e commit-uara në:
 
@@ -194,9 +218,9 @@ public/uploads/categories/
 
 Në një host krejt të ri ngarkoji manualisht një herë, sepse deploy script-i i përjashton upload-et runtime nga mirror-i normal.
 
-## 10. Deploy kodin
+## 11. Deploy kodin
 
-Pasi `.env` dhe `config.local.php` janë gati:
+Pasi `.env` dhe konfigurimi i serverit janë gati:
 
 ```bash
 chmod +x scripts/deploy.sh
@@ -207,15 +231,16 @@ Script-i ngarkon `public/ -> /htdocs/` dhe ruan:
 
 - product/category uploads
 - trash uploads
+- `includes/config.local.php`
 - `includes/recovery.local.php` të gjeneruar në server
 
-Kjo do të thotë që recovery config privat nuk fshihet nga deploy-et pasuese.
+Kjo do të thotë që konfigurimet private të serverit nuk fshihen nga deploy-et pasuese.
 
-## 11. Kontrollo `.htaccess`
+## 12. Kontrollo `.htaccess`
 
 Pas restore kontrollo `/htdocs/.htaccess` dhe `/htdocs/includes/.htaccess`. Dosja `includes` duhet të ketë `Require all denied`.
 
-## 12. Testet bazë pas restore/deploy
+## 13. Testet bazë pas restore/deploy
 
 1. Hap menunë publike.
 2. Kontrollo kategoritë, produktet dhe imazhet.
@@ -227,15 +252,16 @@ Pas restore kontrollo `/htdocs/.htaccess` dhe `/htdocs/includes/.htaccess`. Dosj
 8. Testo Forgot Password dhe konfirmo të njëjtin kod në të dy recovery email-et.
 9. Testo kod të gabuar, skadimin dhe ndryshimin e password-it.
 10. Kontrollo protected recovery enable/disable.
-11. Hap `menu-audit.php` dhe kontrollo problemet kritike.
-12. Testo error page dinamike.
-13. Testo upload-in vetëm kur ke backup.
+11. Verifiko IP guard me dy IP/network-e të ndryshme para se të bësh testin e plotë të 15 tentativave.
+12. Hap `menu-audit.php` dhe kontrollo problemet kritike.
+13. Testo error page dinamike.
+14. Testo upload-in vetëm kur ke backup.
 
-## 13. Cleanup
+## 14. Cleanup
 
 Cleanup automatik dhe manual fshijnë vetëm produkte/imazhe që kanë kaluar mbi 30 ditë në kosh.
 
-## 14. Backup final
+## 15. Backup final
 
 Mbaj jashtë GitHub:
 
@@ -249,7 +275,7 @@ Mbaj jashtë GitHub:
 
 `recovery.local.php` është backup-i autoritativ për Gmail App Password, protected recovery email dhe hash-in e kodit privat.
 
-## 15. Verifikim final
+## 16. Verifikim final
 
 Restore konsiderohet i përfunduar vetëm kur:
 
@@ -259,6 +285,7 @@ Restore konsiderohet i përfunduar vetëm kur:
 - imazhet shfaqen
 - Recovery Setup kalon testet
 - Forgot Password punon end-to-end
+- IP guard është verifikuar pa ndikuar IP të tjera
 - `menu-audit.php` nuk raporton probleme kritike
 - private local files nuk janë tracked në Git
 
