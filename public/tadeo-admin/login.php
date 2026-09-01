@@ -21,7 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($username === '') {
         $error = 'Vendos username.';
     } elseif (is_login_blocked($username)) {
-        $error = 'Ka shumë tentativa të gabuara. Provo përsëri më vonë.';
+        record_login_attempt($username, false);
+        $error = 'Username ose password i gabuar.';
     } else {
         $password = (string)($_POST['password'] ?? '');
         $admin = find_admin_by_username($username);
