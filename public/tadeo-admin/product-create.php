@@ -83,7 +83,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Shto Produkt | <?= e(site_bar_name()) ?> Admin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-admin-header-actions-2">
-    <link rel="stylesheet" href="/assets/css/product-image-preview.css?v=20260831-1">
+    <link rel="stylesheet" href="/assets/css/product-image-preview.css?v=20260901-2">
+    <link rel="stylesheet" href="/assets/css/product-image-editor.css?v=20260901-1">
 </head>
 <body>
     <div class="admin-layout">
@@ -136,8 +137,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <input name="sort_order" type="number" value="<?= e($data['sort_order']) ?>" required>
                     </div>
 
-                    <div class="full">
+                    <div class="full" data-product-image-editor-root>
                         <label>Ngarko imazh për produktin</label>
+
+                        <div class="product-image-mode">
+                            <span class="product-image-mode-title">Mënyra e imazhit</span>
+                            <div class="product-image-mode-options">
+                                <label class="product-image-mode-option">
+                                    <input type="radio" name="image_mode_ui" value="auto" data-image-mode checked>
+                                    <span>AUTO</span>
+                                </label>
+                                <label class="product-image-mode-option">
+                                    <input type="radio" name="image_mode_ui" value="edit" data-image-mode>
+                                    <span>EDITO</span>
+                                </label>
+                            </div>
+                            <div class="help-text">
+                                AUTO përdor kontrollin dhe optimizimin aktual. EDITO hap editorin e plotë para upload-it për crop, zoom, rotate, flip, përmirësime, filtra, resize, shënime dhe watermark.
+                            </div>
+                        </div>
+
                         <input
                             name="image_file"
                             type="file"
@@ -145,7 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             data-product-image-input
                             data-preview-target="productImagePreview"
                         >
-                        <div class="help-text">Imazhi i produktit duhet të jetë portrait. Lejohen raporte nga 9:16 deri afërsisht 4:5, p.sh. 720×1280, 900×1350, 1080×1620 ose 1080×1920. Syno 150–350 KB; mbi 500 KB është i rëndë, ndërsa maksimumi final është 800 KB. Lejohen JPG, PNG ose WEBP deri 10 MB; ruhet automatikisht si WEBP i optimizuar.</div>
+                        <div class="help-text">Imazhi final i produktit duhet të jetë portrait. Lejohen raporte nga 9:16 deri afërsisht 4:5, p.sh. 720×1280, 900×1350, 1080×1620 ose 1080×1920. Syno 150–350 KB; mbi 500 KB është i rëndë, ndërsa maksimumi final është 800 KB. Lejohen JPG, PNG ose WEBP deri 10 MB; serveri e ruan automatikisht si WEBP të optimizuar.</div>
 
                         <div class="product-image-preview" id="productImagePreview" aria-live="polite" hidden>
                             <div class="product-image-preview-grid">
@@ -154,6 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 </div>
                                 <div class="product-image-preview-details">
                                     <div class="product-image-preview-status is-loading" data-preview-status>Po kontrollohet imazhi…</div>
+                                    <button type="button" class="btn btn-secondary product-image-edit-now" data-edit-now hidden>Editoje tani</button>
                                     <dl class="product-image-preview-meta">
                                         <div><dt>File</dt><dd data-preview-name>—</dd></div>
                                         <div><dt>Format</dt><dd data-preview-type>—</dd></div>
@@ -161,10 +181,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         <div><dt>Ratio W/H</dt><dd data-preview-ratio>—</dd></div>
                                         <div><dt>Madhësia burim</dt><dd data-preview-size>—</dd></div>
                                     </dl>
-                                    <p class="product-image-preview-note">Preview kontrollon file-in burim. Serveri bën optimizimin final WEBP dhe validimin përfundimtar gjatë ruajtjes.</p>
+                                    <p class="product-image-preview-note">Preview kontrollon file-in që do të dërgohet. Serveri bën optimizimin final WEBP dhe validimin përfundimtar gjatë ruajtjes.</p>
                                 </div>
                             </div>
                         </div>
+
+                        <div class="product-image-editor-actions" data-editor-actions hidden>
+                            <button type="button" class="btn btn-secondary" data-open-image-editor>Hap / rihap editorin</button>
+                        </div>
+                        <div class="product-image-editor-notice" data-editor-notice hidden></div>
                     </div>
                 </div>
 
@@ -179,6 +204,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </main>
     </div>
 
-    <script src="/assets/js/product-image-preview.js?v=20260831-1" defer></script>
+    <div class="product-image-editor-shell" data-product-image-editor-shell hidden>
+        <div class="product-image-editor-shell-inner">
+            <div class="product-image-editor-warning" data-product-image-editor-warning hidden></div>
+            <div class="product-image-editor-container" data-product-image-editor-container></div>
+        </div>
+    </div>
+
+    <script src="/assets/vendor/filerobot-image-editor/filerobot-image-editor.min.js?v=4.9.1" defer></script>
+    <script src="/assets/js/product-image-preview.js?v=20260901-2" defer></script>
+    <script src="/assets/js/product-image-editor.js?v=20260901-1" defer></script>
 </body>
 </html>
