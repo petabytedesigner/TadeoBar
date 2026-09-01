@@ -26,3 +26,6 @@ function db(): PDO
 
     return $pdo;
 }
+
+require_once __DIR__ . '/security_guard.php';
+site_ip_guard_enforce(db());
