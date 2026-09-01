@@ -151,7 +151,9 @@ function is_login_blocked(string $username): bool
 
 function record_login_attempt(string $username, bool $success): void
 {
-    $stmt = db()->prepare("
+    $pdo = db();
+
+    $stmt = $pdo->prepare("
         INSERT INTO login_attempts (username, ip_hash, success)
         VALUES (?, ?, ?)
     ");
@@ -160,4 +162,13 @@ function record_login_attempt(string $username, bool $success): void
         client_ip_hash(),
         $success ? 1 : 0,
     ]);
+
+    if ($success) {
+        site_ip_guard_reset_after_success($pdo);
+        return;
+    }
+
+    if (site_ip_guard_register_failed_login($pdo)) {
+        site_ip_guard_deny_request();
+    }
 }
