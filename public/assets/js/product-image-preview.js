@@ -42,6 +42,13 @@
         status.textContent = message;
     }
 
+    function emitValidation(input, detail) {
+        input.dispatchEvent(new CustomEvent('product-image-validation', {
+            bubbles: false,
+            detail: detail,
+        }));
+    }
+
     function resetPreview(root) {
         root.hidden = true;
         const image = root.querySelector('[data-preview-image]');
@@ -52,25 +59,26 @@
 
     function validateFile(root, file, width, height) {
         const ratio = height > 0 ? width / height : 0;
+        const canEdit = width >= MIN_WIDTH && height >= MIN_HEIGHT;
 
         if (file.type && !ALLOWED_MIMES.includes(file.type)) {
             setStatus(root, 'error', 'Error: lejohet vetëm JPG, PNG ose WEBP.');
-            return;
+            return { valid: false, typeInvalid: true, ratioInvalid: false, canEdit: false };
         }
 
         if (file.size > SOURCE_MAX_BYTES) {
             setStatus(root, 'error', 'Error: file-i burim kalon limitin 10 MB.');
-            return;
+            return { valid: false, sizeInvalid: true, ratioInvalid: false, canEdit: false };
         }
 
         if (width < MIN_WIDTH || height < MIN_HEIGHT) {
             setStatus(root, 'error', 'Error: minimumi është 600×1000 px.');
-            return;
+            return { valid: false, dimensionsInvalid: true, ratioInvalid: false, canEdit: false };
         }
 
         if (ratio < RATIO_MIN || ratio > RATIO_MAX) {
             setStatus(root, 'error', 'Error: raporti duhet të jetë portrait, width/height 0.55–0.82.');
-            return;
+            return { valid: false, ratioInvalid: true, canEdit: canEdit };
         }
 
         if (file.size > SOURCE_WARNING_BYTES) {
@@ -79,10 +87,11 @@
                 'warning',
                 'Warning: burimi është mbi 500 KB. Serveri do ta optimizojë; limiti final WEBP është 800 KB.'
             );
-            return;
+            return { valid: true, warning: true, ratioInvalid: false, canEdit: true };
         }
 
         setStatus(root, 'ok', 'OK: dimensionet, raporti dhe madhësia e burimit janë në rregull.');
+        return { valid: true, ratioInvalid: false, canEdit: true };
     }
 
     document.querySelectorAll('[data-product-image-input]').forEach(function (input) {
@@ -104,6 +113,7 @@
             const file = input.files && input.files[0] ? input.files[0] : null;
             if (!file) {
                 resetPreview(root);
+                emitValidation(input, { valid: false, empty: true, ratioInvalid: false, canEdit: false });
                 return;
             }
 
@@ -119,6 +129,7 @@
                 setText(root, '[data-preview-dimensions]', '—');
                 setText(root, '[data-preview-ratio]', '—');
                 setStatus(root, 'error', 'Error: lejohet vetëm JPG, PNG ose WEBP.');
+                emitValidation(input, { valid: false, typeInvalid: true, ratioInvalid: false, canEdit: false });
                 return;
             }
 
@@ -138,13 +149,19 @@
 
                 setText(root, '[data-preview-dimensions]', width + '×' + height + ' px');
                 setText(root, '[data-preview-ratio]', ratio > 0 ? ratio.toFixed(3) : '—');
-                validateFile(root, file, width, height);
+
+                const validation = validateFile(root, file, width, height);
+                validation.width = width;
+                validation.height = height;
+                validation.ratio = ratio;
+                emitValidation(input, validation);
             };
 
             probe.onerror = function () {
                 setText(root, '[data-preview-dimensions]', '—');
                 setText(root, '[data-preview-ratio]', '—');
                 setStatus(root, 'error', 'Error: imazhi nuk u lexua dot nga browser-i.');
+                emitValidation(input, { valid: false, unreadable: true, ratioInvalid: false, canEdit: false });
             };
 
             probe.src = objectUrl;
