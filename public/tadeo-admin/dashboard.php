@@ -4,10 +4,12 @@ declare(strict_types=1);
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/trash_cleanup.php';
+require_once __DIR__ . '/../includes/product_ordering.php';
 require_once __DIR__ . '/../includes/admin_header.php';
 
 $admin = require_admin();
 $pdo = db();
+ensure_product_ordering_schema($pdo);
 
 $cleanupMessage = '';
 $cleanupError = '';
