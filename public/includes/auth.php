@@ -168,7 +168,12 @@ function is_login_blocked(string $username): bool
 function cleanup_old_login_attempts(PDO $pdo): void
 {
     $days = LOGIN_ATTEMPT_RETENTION_DAYS;
-    $pdo->exec("DELETE FROM login_attempts WHERE attempted_at < DATE_SUB(NOW(), INTERVAL {$days} DAY)");
+
+    try {
+        $pdo->exec("DELETE FROM login_attempts WHERE attempted_at < DATE_SUB(NOW(), INTERVAL {$days} DAY)");
+    } catch (Throwable $e) {
+        // Retention cleanup is maintenance only and must never break authentication.
+    }
 }
 
 function record_login_attempt(string $username, bool $success): void
