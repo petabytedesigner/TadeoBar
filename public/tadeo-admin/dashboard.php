@@ -4,10 +4,12 @@ declare(strict_types=1);
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/trash_cleanup.php';
+require_once __DIR__ . '/../includes/product_ordering.php';
 require_once __DIR__ . '/../includes/admin_header.php';
 
 $admin = require_admin();
 $pdo = db();
+ensure_product_ordering_schema($pdo);
 
 $cleanupMessage = '';
 $cleanupError = '';
@@ -32,8 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'run_c
     }
 }
 
-$activeProducts = (int)$pdo->query("SELECT COUNT(*) FROM products WHERE is_active = 1")->fetchColumn();
-$hiddenProducts = (int)$pdo->query("SELECT COUNT(*) FROM products WHERE is_active = 0")->fetchColumn();
+$activeProducts = (int)$pdo->query("SELECT COUNT(*) FROM products WHERE is_active = 1 AND deleted_at IS NULL")->fetchColumn();
+$hiddenProducts = (int)$pdo->query("SELECT COUNT(*) FROM products WHERE is_active = 0 AND deleted_at IS NULL")->fetchColumn();
 $totalProducts = $activeProducts + $hiddenProducts;
 
 $activeCategories = (int)$pdo->query("SELECT COUNT(*) FROM categories WHERE is_active = 1")->fetchColumn();
@@ -222,7 +224,7 @@ $last7 = dashboard_visit_count_between($pdo, $last7StartDate, $todayDate);
 
                     <div class="dashboard-status-list">
                         <div class="dashboard-status-item">
-                            <span>Totali i produkteve</span>
+                            <span>Totali i produkteve jashtë koshit</span>
                             <strong><?= e($totalProducts) ?></strong>
                         </div>
 

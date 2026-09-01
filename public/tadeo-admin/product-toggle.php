@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/csrf.php';
+require_once __DIR__ . '/../includes/product_ordering.php';
 
 require_admin();
 
@@ -18,7 +19,15 @@ if ($id <= 0) {
     redirect('/tadeo-admin/products.php?msg=Produkt i pavlefshëm');
 }
 
-$stmt = db()->prepare("UPDATE products SET is_active = ? WHERE id = ?");
+$pdo = db();
+ensure_product_ordering_schema($pdo);
+
+$stmt = $pdo->prepare(
+    "UPDATE products
+     SET is_active = ?
+     WHERE id = ?
+       AND deleted_at IS NULL"
+);
 $stmt->execute([$isActive === 1 ? 1 : 0, $id]);
 
 redirect('/tadeo-admin/products.php?msg=Statusi i produktit u përditësua');

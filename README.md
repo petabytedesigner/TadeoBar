@@ -70,6 +70,30 @@ For manual/fallback database upgrades, the focused idempotent recovery migration
 database/migrations/20260831-password-recovery.sql
 ```
 
+## Product numbering and trash
+
+All products outside the trash use a strict `1..N` `menu_number` sequence.
+
+- creating a product at an existing position shifts later products automatically
+- moving a product to another number shifts only the affected range
+- sending a product to trash stores its former position in `trash_menu_number`, releases `menu_number`, and compacts the live sequence
+- restoring a product inserts it back at its preserved position when valid, shifts later products, and restores it as hidden
+- trashed products therefore never reserve a live menu number
+
+The runtime helper is:
+
+```text
+public/includes/product_ordering.php
+```
+
+The schema is present in `database/schema.sql`, and the focused idempotent migration for existing installations is:
+
+```text
+database/migrations/20260901-product-menu-ordering.sql
+```
+
+Admin product pages also verify/upgrade the required columns and normalize legacy live numbering before mutations, so old installations are self-healing when product administration is opened.
+
 ## Hosting
 
 The contents of `public/` are deployed to InfinityFree under:
@@ -84,7 +108,7 @@ Before deployment, run:
 bash scripts/preflight.sh
 ```
 
-The preflight checks required commands, FTP configuration, critical recovery/security files, PHP syntax, checksum-deploy requirements, deploy-script shell syntax, and Git exclusions for private files. It intentionally does not require local MySQL credentials for an existing live installation.
+The preflight checks required commands, FTP configuration, critical recovery/security files, strict product-ordering integration, PHP syntax, checksum-deploy requirements, deploy-script shell syntax, and Git exclusions for private files. It intentionally does not require local MySQL credentials for an existing live installation.
 
 Deployment is handled by:
 
@@ -110,7 +134,7 @@ For a brand-new server/restore, `config.local.php` must still be created on that
 ```text
 public/                 Public PHP application and assets
 public/tadeo-admin/     Admin panel + Forgot Password + one-time recovery setup
-public/includes/        Shared PHP helpers, DB/security config loader, recovery logic and SMTP client
+public/includes/        Shared PHP helpers, DB/security config loader, recovery logic, ordering logic and SMTP client
 database/schema.sql     Complete non-secret application schema
 database/migrations/    Focused upgrade scripts for existing installations
 database/seed/          Sanitized historical menu snapshot
