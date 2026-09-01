@@ -5,19 +5,11 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/admin_header.php';
 require_once __DIR__ . '/../includes/trash_cleanup.php';
+require_once __DIR__ . '/../includes/product_ordering.php';
 
 $admin = require_admin();
 $pdo = db();
-
-function ensure_product_trash_column(PDO $pdo): void
-{
-    $stmt = $pdo->query("SHOW COLUMNS FROM products LIKE 'deleted_at'");
-    $exists = $stmt !== false && $stmt->fetch() !== false;
-
-    if (!$exists) {
-        $pdo->exec("ALTER TABLE products ADD COLUMN deleted_at TIMESTAMP NULL DEFAULT NULL AFTER updated_at");
-    }
-}
+ensure_product_ordering_schema($pdo);
 
 function product_trash_flash(string $msg): string
 {
@@ -29,7 +21,6 @@ function product_trash_flash(string $msg): string
     };
 }
 
-ensure_product_trash_column($pdo);
 $autoPurged = 0;
 $autoPurgeError = false;
 
@@ -43,6 +34,7 @@ $products = $pdo->query("
     SELECT
         p.id,
         p.menu_number,
+        p.trash_menu_number,
         p.name_sq,
         p.name_en,
         p.price_all,
@@ -163,7 +155,7 @@ $flash = product_trash_flash((string)($_GET['msg'] ?? ''));
                 <div class="trash-hero-grid">
                     <div>
                         <p class="admin-muted">
-                            Produktet në kosh nuk shfaqen në menunë publike. Mund t’i rikthesh si të fshehura ose t’i fshish përgjithmonë.
+                            Produktet në kosh nuk shfaqen në menunë publike dhe nuk mbajnë të rezervuar numrin e menusë. Pozicioni i vjetër ruhet veçmas që rikthimi ta vendosë përsëri aty kur është e mundur.
                             Produktet që qëndrojnë këtu më shumë se <strong>30 ditë</strong> pastrohen automatikisht bashkë me imazhin e tyre kur ai nuk përdoret diku tjetër.
                         </p>
                     </div>
@@ -199,7 +191,9 @@ $flash = product_trash_flash((string)($_GET['msg'] ?? ''));
                     <?php foreach ($products as $product): ?>
                         <article class="product-admin-card">
                             <div class="product-admin-top">
-                                <div class="product-number">#<?= e($product['menu_number']) ?></div>
+                                <div class="product-number">
+                                    <?= !empty($product['trash_menu_number']) ? 'Ishte #' . e($product['trash_menu_number']) : 'Pa pozicion të ruajtur' ?>
+                                </div>
                                 <span class="badge badge-hidden">Në kosh</span>
                             </div>
 
@@ -221,7 +215,7 @@ $flash = product_trash_flash((string)($_GET['msg'] ?? ''));
                             </div>
 
                             <div class="trash-card-note">
-                                Rikthimi e kthen produktin si të fshehur, jo direkt aktiv.
+                                Rikthimi e kthen produktin si të fshehur. Produktet e tjera zhvendosen automatikisht që numërimi të mbetet strikt 1…N.
                             </div>
 
                             <div class="product-actions">
