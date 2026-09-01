@@ -7,6 +7,9 @@
     const RATIO_MAX = 0.82;
     const SOURCE_MAX_BYTES = 10485760;
     const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
+    const EDITOR_LIBRARY_SRC = '/assets/vendor/filerobot-image-editor/filerobot-image-editor.min.js?v=4.9.1';
+
+    let editorLibraryPromise = null;
 
     function getSelectedMode(radios) {
         const selected = Array.from(radios).find(function (radio) {
@@ -19,6 +22,38 @@
         radios.forEach(function (radio) {
             radio.checked = radio.value === mode;
         });
+    }
+
+    function ensureEditorLibrary() {
+        if (window.FilerobotImageEditor) {
+            return Promise.resolve(window.FilerobotImageEditor);
+        }
+
+        if (editorLibraryPromise) {
+            return editorLibraryPromise;
+        }
+
+        editorLibraryPromise = new Promise(function (resolve, reject) {
+            const script = document.createElement('script');
+            script.src = EDITOR_LIBRARY_SRC;
+            script.async = true;
+            script.setAttribute('data-filerobot-library', '1');
+            script.onload = function () {
+                if (window.FilerobotImageEditor) {
+                    resolve(window.FilerobotImageEditor);
+                    return;
+                }
+                editorLibraryPromise = null;
+                reject(new Error('Bundle-i i editorit u ngarkua, por editori nuk u inicializua.'));
+            };
+            script.onerror = function () {
+                editorLibraryPromise = null;
+                reject(new Error('Editor-i i imazhit nuk u ngarkua dot.'));
+            };
+            document.head.appendChild(script);
+        });
+
+        return editorLibraryPromise;
     }
 
     function fileFromSavedImage(savedImage) {
@@ -193,9 +228,13 @@
             fitSize: 'Përshtat në ekran',
             download: 'Shkarko',
             barTadeo916: '9:16',
+            barTadeo916Desc: '9:16',
             barTadeo23: '2:3',
+            barTadeo23Desc: '2:3',
             barTadeo34: '3:4',
+            barTadeo34Desc: '3:4',
             barTadeo45: '4:5',
+            barTadeo45Desc: '4:5',
         };
     }
 
@@ -216,7 +255,6 @@
             return;
         }
 
-        let originalSelectedFile = null;
         let editorInstance = null;
         let editorObjectUrl = '';
         let hasAppliedEdit = false;
@@ -256,17 +294,18 @@
             if (editNowButton && mode !== 'auto') {
                 editNowButton.hidden = true;
             }
-            setNotice('', '');
         }
 
         function closeEditor() {
-            if (editorInstance) {
+            const instance = editorInstance;
+            editorInstance = null;
+
+            if (instance) {
                 try {
-                    editorInstance.terminate();
+                    instance.terminate();
                 } catch (error) {
                     // The editor may already be terminated by its own close flow.
                 }
-                editorInstance = null;
             }
 
             if (editorObjectUrl) {
@@ -301,30 +340,16 @@
                 suppressInputEditor = true;
                 input.dispatchEvent(new Event('change', { bubbles: true }));
                 suppressInputEditor = false;
-                setNotice('Editimi u aplikua. Ky është imazhi që do të dërgohet kur ruan produktin.', 'ok');
                 closeEditor();
                 syncModeUi();
+                setNotice('Editimi u aplikua. Ky është imazhi që do të dërgohet kur ruan produktin.', 'ok');
             }).catch(function (error) {
                 showEditorWarning(error && error.message ? error.message : 'Imazhi i edituar nuk u përgatit dot.');
             });
         }
 
-        function openEditor(source) {
-            if (!window.FilerobotImageEditor) {
-                setNotice('Editor-i i imazhit nuk u ngarkua. Rifresko faqen dhe provo përsëri.', 'error');
-                return;
-            }
-
+        function renderEditor(source, FIE) {
             let editorSource = source;
-            if (source instanceof File) {
-                const sourceError = validateSourceFile(source);
-                if (sourceError) {
-                    setNotice(sourceError, 'error');
-                    return;
-                }
-                editorObjectUrl = URL.createObjectURL(source);
-                editorSource = editorObjectUrl;
-            }
 
             closeEditor();
 
@@ -337,7 +362,6 @@
             shell.classList.add('is-open');
             document.body.classList.add('product-image-editor-open');
 
-            const FIE = window.FilerobotImageEditor;
             const TABS = FIE.TABS;
             const TOOLS = FIE.TOOLS;
             const baseName = source instanceof File && source.name
@@ -366,10 +390,10 @@
                 defaultToolId: TOOLS.CROP,
                 Crop: {
                     presetsItems: [
-                        { titleKey: 'barTadeo916', descriptionKey: '9:16', ratio: 9 / 16 },
-                        { titleKey: 'barTadeo23', descriptionKey: '2:3', ratio: 2 / 3 },
-                        { titleKey: 'barTadeo34', descriptionKey: '3:4', ratio: 3 / 4 },
-                        { titleKey: 'barTadeo45', descriptionKey: '4:5', ratio: 4 / 5 },
+                        { titleKey: 'barTadeo916', descriptionKey: 'barTadeo916Desc', ratio: 9 / 16 },
+                        { titleKey: 'barTadeo23', descriptionKey: 'barTadeo23Desc', ratio: 2 / 3 },
+                        { titleKey: 'barTadeo34', descriptionKey: 'barTadeo34Desc', ratio: 3 / 4 },
+                        { titleKey: 'barTadeo45', descriptionKey: 'barTadeo45Desc', ratio: 4 / 5 },
                     ],
                 },
                 Rotate: {
@@ -416,8 +440,27 @@
             });
         }
 
+        function openEditor(source) {
+            if (source instanceof File) {
+                const sourceError = validateSourceFile(source);
+                if (sourceError) {
+                    setNotice(sourceError, 'error');
+                    return;
+                }
+            }
+
+            setNotice('Po ngarkohet editori…', '');
+            ensureEditorLibrary().then(function (FIE) {
+                setNotice('', '');
+                renderEditor(source, FIE);
+            }).catch(function (error) {
+                setNotice(error && error.message ? error.message : 'Editor-i i imazhit nuk u ngarkua dot.', 'error');
+            });
+        }
+
         radios.forEach(function (radio) {
             radio.addEventListener('change', function () {
+                setNotice('', '');
                 syncModeUi();
                 if (radio.checked && radio.value === 'edit') {
                     const file = currentFile();
@@ -431,15 +474,15 @@
         input.addEventListener('change', function () {
             const file = currentFile();
             if (!file) {
-                originalSelectedFile = null;
                 hasAppliedEdit = false;
+                setNotice('', '');
                 syncModeUi();
                 return;
             }
 
             if (!suppressInputEditor) {
-                originalSelectedFile = file;
                 hasAppliedEdit = false;
+                setNotice('', '');
             }
 
             syncModeUi();
@@ -465,6 +508,7 @@
                     return;
                 }
                 setSelectedMode(radios, 'edit');
+                setNotice('', '');
                 syncModeUi();
                 openEditor(file);
             });
@@ -472,6 +516,7 @@
 
         if (openEditorButton) {
             openEditorButton.addEventListener('click', function () {
+                setNotice('', '');
                 const file = currentFile();
                 if (file) {
                     openEditor(file);
@@ -490,7 +535,7 @@
                 }
 
                 const file = currentFile();
-                if (file && !hasAppliedEdit && originalSelectedFile === file) {
+                if (file && !hasAppliedEdit) {
                     event.preventDefault();
                     setNotice('Je në mënyrën EDITO. Hape editorin dhe shtyp Apliko para se të ruash produktin.', 'error');
                     openEditor(file);
