@@ -37,6 +37,7 @@ required_files=(
   "public/includes/db.php"
   "public/includes/auth.php"
   "public/includes/csrf.php"
+  "public/includes/security_guard.php"
   "public/includes/password_recovery.php"
   "public/includes/smtp_mailer.php"
   "public/tadeo-admin/login.php"
@@ -46,12 +47,13 @@ required_files=(
   "public/tadeo-admin/recovery-setup.php"
   "database/schema.sql"
   "database/migrations/20260831-password-recovery.sql"
+  "database/migrations/20260901-security-ip-guard.sql"
 )
 
 for file in "${required_files[@]}"; do
   [ -f "$file" ] || fail "Required file missing: $file"
 done
-ok "Required application and recovery files exist"
+ok "Required application, security, and recovery files exist"
 
 grep -q 'Require all denied' public/includes/.htaccess \
   || fail "public/includes/.htaccess does not deny direct access"
@@ -59,6 +61,16 @@ grep -q 'password_reset_codes' database/schema.sql \
   || fail "database/schema.sql is missing password_reset_codes"
 grep -q 'password_reset_codes' database/migrations/20260831-password-recovery.sql \
   || fail "Password recovery migration is incomplete"
+grep -q 'security_ip_guard' database/schema.sql \
+  || fail "database/schema.sql is missing security_ip_guard"
+grep -q 'security_ip_guard' database/migrations/20260901-security-ip-guard.sql \
+  || fail "IP guard migration is incomplete"
+grep -q 'site_ip_guard_enforce' public/includes/db.php \
+  || fail "db.php is not enforcing the site-wide IP guard"
+grep -q 'SITE_IP_GUARD_MAX_FAILED_LOGINS = 15' public/includes/security_guard.php \
+  || fail "IP guard failed-login threshold is not configured as expected"
+grep -q 'SITE_IP_GUARD_BLOCK_HOURS = 24' public/includes/security_guard.php \
+  || fail "IP guard block duration is not configured as expected"
 ok "Security and database recovery structure is present"
 
 php_files_checked=0
