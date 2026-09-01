@@ -121,6 +121,7 @@ LFTP
 
 declare -A LOCAL_FILES=()
 declare -A REMOTE_FILES=()
+declare -A REMOTE_DIRS=()
 
 while IFS= read -r -d '' path; do
   rel="${path#"$LOCAL_DIR"/}"
@@ -137,6 +138,14 @@ while IFS= read -r -d '' path; do
   fi
   REMOTE_FILES["$rel"]=1
 done < <(find "$REMOTE_SNAPSHOT" -type f -print0)
+
+while IFS= read -r -d '' path; do
+  if [[ "$path" == "$REMOTE_SNAPSHOT" ]]; then
+    continue
+  fi
+  rel="${path#"$REMOTE_SNAPSHOT"/}"
+  REMOTE_DIRS["$rel"]=1
+done < <(find "$REMOTE_SNAPSHOT" -type d -print0)
 
 same_count=0
 upload_count=0
@@ -198,12 +207,52 @@ fi
 
 write_lftp_settings > "$SYNC_SCRIPT"
 
+declare -A SYNC_DIRS_READY=()
+SYNC_DIRS_READY[""]=1
+for rel_dir in "${!REMOTE_DIRS[@]}"; do
+  SYNC_DIRS_READY["$rel_dir"]=1
+done
+
+ensure_sync_remote_dir() {
+  local rel_dir="$1"
+  local parent_rel=""
+  local remote_path=""
+
+  [[ -z "$rel_dir" ]] && return 0
+
+  if [[ -n "${SYNC_DIRS_READY[$rel_dir]+x}" ]]; then
+    return 0
+  fi
+
+  if [[ "$rel_dir" == */* ]]; then
+    parent_rel="${rel_dir%/*}"
+  fi
+
+  ensure_sync_remote_dir "$parent_rel"
+  remote_path="$REMOTE_DIR/$rel_dir"
+
+  # Only missing directories from the live snapshot are attempted. Some FTP
+  # servers return 550 for mkdir on an existing directory, so directory setup
+  # is best-effort here; the following put remains fail-fast and will catch a
+  # genuine permission/path failure.
+  printf 'set cmd:fail-exit no\n' >> "$SYNC_SCRIPT"
+  printf 'mkdir %s\n' "$(lftp_quote "$remote_path")" >> "$SYNC_SCRIPT"
+  printf 'set cmd:fail-exit yes\n' >> "$SYNC_SCRIPT"
+  SYNC_DIRS_READY["$rel_dir"]=1
+}
+
 while IFS= read -r -d '' rel; do
   local_path="$ROOT_DIR/$LOCAL_DIR/$rel"
   remote_path="$REMOTE_DIR/$rel"
-  remote_parent="${remote_path%/*}"
 
-  printf 'mkdir -p %s\n' "$(lftp_quote "$remote_parent")" >> "$SYNC_SCRIPT"
+  if [[ "$rel" == */* ]]; then
+    rel_parent="${rel%/*}"
+  else
+    rel_parent=""
+  fi
+  remote_parent="$REMOTE_DIR${rel_parent:+/$rel_parent}"
+
+  ensure_sync_remote_dir "$rel_parent"
 
   if [[ "$rel" == "assets/images/categories/all.webp" ]]; then
     temp_path="$remote_parent/.all-image-upload.tmp"
