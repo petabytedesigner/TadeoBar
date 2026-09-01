@@ -1,0 +1,6 @@
+Filerobot Image Editor
+Upstream repository: https://github.com/scaleflex/filerobot-image-editor
+Upstream tag: v4.9.1
+Upstream commit: 7f76247c452347053226bf106db473fb4fcbb75c
+Build commands: yarn build:packages && yarn build:js-bundle
+License: MIT (see LICENSE)
