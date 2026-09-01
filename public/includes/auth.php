@@ -7,6 +7,7 @@ require_once __DIR__ . '/helpers.php';
 const ADMIN_SESSION_TIMEOUT_SECONDS = 3600;
 const LOGIN_MAX_FAILED_ATTEMPTS = 5;
 const LOGIN_LOCK_MINUTES = 10;
+const LOGIN_DUMMY_PASSWORD_HASH = '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.';
 
 function admin_session_start(): void
 {
@@ -115,6 +116,11 @@ function client_ip_hash(): string
     $ip = (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown');
 
     return hash('sha256', 'tadeo-admin-login|' . $ip);
+}
+
+function login_dummy_password_check(string $password): void
+{
+    password_verify($password, LOGIN_DUMMY_PASSWORD_HASH);
 }
 
 function find_admin_by_username(string $username): ?array
