@@ -56,20 +56,146 @@ function trash_cleanup_mark_run(): void
     }
 }
 
+function trash_cleanup_safe_product_image(?string $path): ?string
+{
+    $path = ltrim(trim((string)$path), '/');
+
+    if (
+        $path === '' ||
+        str_contains($path, '..') ||
+        str_contains($path, "\0") ||
+        !str_starts_with($path, 'uploads/products/')
+    ) {
+        return null;
+    }
+
+    return $path;
+}
+
+function trash_cleanup_product_image_shared(PDO $pdo, string $path, int $productId): bool
+{
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM products WHERE image_path = ? AND id <> ?');
+    $stmt->execute([$path, $productId]);
+
+    if ((int)$stmt->fetchColumn() > 0) {
+        return true;
+    }
+
+    if (trash_cleanup_column_exists($pdo, 'categories', 'icon_image_path')) {
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM categories WHERE icon_image_path = ?');
+        $stmt->execute([$path]);
+        return (int)$stmt->fetchColumn() > 0;
+    }
+
+    return false;
+}
+
 function trash_cleanup_products(PDO $pdo): int
 {
     if (!trash_cleanup_column_exists($pdo, 'products', 'deleted_at')) {
         return 0;
     }
 
-    $stmt = $pdo->prepare(
-        "DELETE FROM products
+    $rows = $pdo->query(
+        "SELECT id, image_path
+         FROM products
          WHERE deleted_at IS NOT NULL
-           AND deleted_at < DATE_SUB(NOW(), INTERVAL 30 DAY)"
-    );
-    $stmt->execute();
+           AND deleted_at < DATE_SUB(NOW(), INTERVAL 30 DAY)
+         ORDER BY id"
+    )->fetchAll();
 
-    return $stmt->rowCount();
+    if ($rows === []) {
+        return 0;
+    }
+
+    $root = dirname(__DIR__);
+    $deleted = 0;
+    $hadFailure = false;
+
+    foreach ($rows as $row) {
+        $id = (int)$row['id'];
+        if ($id <= 0) {
+            continue;
+        }
+
+        $imagePath = trash_cleanup_safe_product_image($row['image_path'] ?? null);
+        $imageAbsolute = '';
+        $quarantinePath = '';
+        $quarantined = false;
+
+        try {
+            $pdo->beginTransaction();
+
+            $lock = $pdo->prepare(
+                "SELECT id, image_path
+                 FROM products
+                 WHERE id = ?
+                   AND deleted_at IS NOT NULL
+                   AND deleted_at < DATE_SUB(NOW(), INTERVAL 30 DAY)
+                 LIMIT 1
+                 FOR UPDATE"
+            );
+            $lock->execute([$id]);
+            $current = $lock->fetch();
+
+            if (!$current) {
+                $pdo->rollBack();
+                continue;
+            }
+
+            $imagePath = trash_cleanup_safe_product_image($current['image_path'] ?? null);
+
+            if ($imagePath !== null && !trash_cleanup_product_image_shared($pdo, $imagePath, $id)) {
+                $imageAbsolute = $root . '/' . $imagePath;
+
+                if (is_file($imageAbsolute)) {
+                    $quarantinePath = $imageAbsolute . '.cleanup-' . bin2hex(random_bytes(8));
+                    if (!@rename($imageAbsolute, $quarantinePath)) {
+                        throw new RuntimeException('Product image quarantine failed.');
+                    }
+                    $quarantined = true;
+                }
+            }
+
+            $stmt = $pdo->prepare('DELETE FROM products WHERE id = ? AND deleted_at IS NOT NULL');
+            $stmt->execute([$id]);
+
+            if ($stmt->rowCount() !== 1) {
+                throw new RuntimeException('Product cleanup delete failed.');
+            }
+
+            if (trash_cleanup_table_exists($pdo, 'image_detach_history')) {
+                $history = $pdo->prepare("DELETE FROM image_detach_history WHERE owner_type = 'product' AND owner_id = ?");
+                $history->execute([$id]);
+            }
+
+            $pdo->commit();
+            $deleted++;
+
+            if ($quarantined && is_file($quarantinePath) && !@unlink($quarantinePath)) {
+                if ($imageAbsolute !== '' && !is_file($imageAbsolute)) {
+                    @rename($quarantinePath, $imageAbsolute);
+                }
+                $hadFailure = true;
+            }
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            if ($quarantined && is_file($quarantinePath) && $imageAbsolute !== '' && !is_file($imageAbsolute)) {
+                @rename($quarantinePath, $imageAbsolute);
+            }
+
+            $hadFailure = true;
+        }
+    }
+
+    if ($hadFailure) {
+        throw new RuntimeException('Një ose më shumë produkte/imazhe nuk u pastruan plotësisht.');
+    }
+
+    return $deleted;
 }
 
 function trash_cleanup_images(PDO $pdo): int
@@ -90,6 +216,7 @@ function trash_cleanup_images(PDO $pdo): int
 
     $root = dirname(__DIR__);
     $deleted = 0;
+    $hadFailure = false;
 
     foreach ($rows as $row) {
         $id = (int)$row['id'];
@@ -102,19 +229,28 @@ function trash_cleanup_images(PDO $pdo): int
             str_contains($trashPath, "\0") ||
             !str_starts_with($trashPath, 'uploads/trash/')
         ) {
+            $hadFailure = true;
             continue;
         }
 
         $absolutePath = $root . '/' . $trashPath;
 
-        if (is_file($absolutePath)) {
-            @unlink($absolutePath);
+        if (is_file($absolutePath) && !@unlink($absolutePath)) {
+            $hadFailure = true;
+            continue;
         }
 
-        $stmt = $pdo->prepare("DELETE FROM image_trash WHERE id = ?");
-        $stmt->execute([$id]);
+        try {
+            $stmt = $pdo->prepare("DELETE FROM image_trash WHERE id = ?");
+            $stmt->execute([$id]);
+            $deleted += $stmt->rowCount();
+        } catch (Throwable $e) {
+            $hadFailure = true;
+        }
+    }
 
-        $deleted += $stmt->rowCount();
+    if ($hadFailure) {
+        throw new RuntimeException('Një ose më shumë imazhe nuk u pastruan plotësisht.');
     }
 
     return $deleted;
@@ -129,9 +265,8 @@ function run_trash_cleanup_if_due(PDO $pdo): void
     try {
         trash_cleanup_products($pdo);
         trash_cleanup_images($pdo);
-    } catch (Throwable $e) {
-        // Cleanup must never break the public menu.
-    } finally {
         trash_cleanup_mark_run();
+    } catch (Throwable $e) {
+        // Cleanup must never break the public menu. No marker means the next request may retry.
     }
 }
