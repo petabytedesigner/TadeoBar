@@ -84,7 +84,7 @@ Before deployment, run:
 bash scripts/preflight.sh
 ```
 
-The preflight checks required commands, FTP configuration, critical recovery/security files, PHP syntax, and Git exclusions for private files. It intentionally does not require local MySQL credentials for an existing live installation.
+The preflight checks required commands, FTP configuration, critical recovery/security files, PHP syntax, checksum-deploy requirements, deploy-script shell syntax, and Git exclusions for private files. It intentionally does not require local MySQL credentials for an existing live installation.
 
 Deployment is handled by:
 
@@ -92,7 +92,16 @@ Deployment is handled by:
 scripts/deploy.sh
 ```
 
-`deploy.sh` automatically runs the same preflight before starting the FTPS mirror. It requires only a local `.env` with FTP credentials. Existing server-side `public/includes/config.local.php` and `public/includes/recovery.local.php` are excluded from the mirror and preserved on the server, along with runtime uploads. All private files remain excluded from Git.
+`deploy.sh` uses content-based SHA-256 synchronization instead of relying on FTP timestamps. It first downloads a temporary snapshot of deployable files from `/htdocs`, including hidden files such as `.htaccess`, then compares every deployable host file byte-for-byte with `public/`.
+
+- identical SHA-256: the file is left untouched
+- missing or different SHA-256: only that file is uploaded
+- remote deployable file absent from `public/`: only that file is deleted
+- every uploaded file is downloaded again and SHA-256 verified after transfer
+- `assets/images/categories/all.webp` uses its InfinityFree temporary-name workaround only when its content actually differs
+- `public/includes/config.local.php`, `public/includes/recovery.local.php`, runtime product/category/trash images, and `uploads/.trash-cleanup-last-run` are excluded from synchronization and preserved on the server
+
+The deploy output reports `SAME`, `UPLOAD`, and `DELETE` counts before making changes. If host and repo deployable files are already identical, deploy exits without uploading or deleting anything.
 
 For a brand-new server/restore, `config.local.php` must still be created on that server before the application can connect to MySQL.
 
@@ -106,7 +115,7 @@ database/schema.sql     Complete non-secret application schema
 database/migrations/    Focused upgrade scripts for existing installations
 database/seed/          Sanitized historical menu snapshot
 scripts/preflight.sh    Final local checks before deployment
-scripts/deploy.sh       FTPS deployment script
+scripts/deploy.sh       FTPS SHA-256 checksum deployment script
 RESTORE.md              Full restore/recovery guide
 ```
 
