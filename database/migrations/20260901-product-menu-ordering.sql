@@ -4,6 +4,21 @@
 
 SET NAMES utf8mb4;
 
+-- Older menu-only installations may not have deleted_at yet.
+SET @sql = IF(
+  EXISTS(
+    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'products'
+      AND COLUMN_NAME = 'deleted_at'
+  ),
+  'SELECT 1',
+  'ALTER TABLE `products` ADD COLUMN `deleted_at` timestamp NULL DEFAULT NULL AFTER `updated_at`'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
 SET @sql = IF(
   EXISTS(
     SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
