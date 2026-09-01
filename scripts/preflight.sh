@@ -45,14 +45,17 @@ required_files=(
   "public/includes/upload.php"
   "public/includes/product_ordering.php"
   "public/tadeo-admin/login.php"
+  "public/tadeo-admin/dashboard.php"
   "public/tadeo-admin/forgot-password.php"
   "public/tadeo-admin/verify-reset-code.php"
   "public/tadeo-admin/reset-password.php"
   "public/tadeo-admin/recovery-setup.php"
+  "public/tadeo-admin/products.php"
   "public/tadeo-admin/product-create.php"
   "public/tadeo-admin/product-edit.php"
   "public/tadeo-admin/product-delete.php"
   "public/tadeo-admin/product-restore.php"
+  "public/tadeo-admin/product-toggle.php"
   "public/tadeo-admin/product-trash.php"
   "public/tadeo-admin/category-create.php"
   "public/tadeo-admin/category-edit.php"
@@ -100,6 +103,10 @@ grep -q 'trash_menu_number' database/migrations/20260901-product-menu-ordering.s
   || fail "Product menu-ordering migration is incomplete"
 grep -q 'function ensure_product_ordering_schema' public/includes/product_ordering.php \
   || fail "Product ordering schema helper is missing"
+grep -q 'ensure_product_ordering_schema' public/tadeo-admin/dashboard.php \
+  || fail "Dashboard does not initialize the product-ordering upgrade path"
+grep -q 'ensure_product_ordering_schema' public/tadeo-admin/products.php \
+  || fail "Products page does not initialize the product-ordering upgrade path"
 grep -q 'product_ordering_prepare_insert' public/tadeo-admin/product-create.php \
   || fail "Product create is not preserving strict 1..N ordering"
 grep -q 'product_ordering_move_live' public/tadeo-admin/product-edit.php \
@@ -108,6 +115,8 @@ grep -q 'product_ordering_trash' public/tadeo-admin/product-delete.php \
   || fail "Product trash does not release and compact menu numbering"
 grep -q 'product_ordering_restore' public/tadeo-admin/product-restore.php \
   || fail "Product restore does not reinsert into strict menu numbering"
+grep -q 'deleted_at IS NULL' public/tadeo-admin/product-toggle.php \
+  || fail "Product toggle can target trashed products"
 ok "Strict 1..N product ordering and trash-safe restore integration is present"
 
 editor_expected_hash='ff0d274db699974b2096786549a424473438a72971da416d54cd68c05cd282df'
@@ -149,6 +158,8 @@ if [ -d .git ] && command -v git >/dev/null 2>&1; then
     || fail "config.local.php is not ignored by Git"
   git check-ignore -q public/includes/recovery.local.php \
     || fail "recovery.local.php is not ignored by Git"
+  git check-ignore -q .deploy-audit/ \
+    || fail ".deploy-audit/ is not ignored by Git"
 
   if git ls-files --error-unmatch .env >/dev/null 2>&1; then
     fail ".env is tracked by Git"
@@ -166,7 +177,7 @@ if [ -d .git ] && command -v git >/dev/null 2>&1; then
     ok "Git working tree is clean"
   fi
 
-  ok "Private files are excluded from Git"
+  ok "Private files and local deploy-audit artifacts are excluded from Git"
 else
   echo "WARNING: .git metadata not found; Git tracking checks were skipped."
 fi
