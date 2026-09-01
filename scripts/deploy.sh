@@ -208,7 +208,6 @@ fi
 write_lftp_settings > "$SYNC_SCRIPT"
 
 declare -A SYNC_DIRS_READY=()
-SYNC_DIRS_READY[""]=1
 for rel_dir in "${!REMOTE_DIRS[@]}"; do
   SYNC_DIRS_READY["$rel_dir"]=1
 done
