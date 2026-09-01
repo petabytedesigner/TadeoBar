@@ -133,8 +133,10 @@ try {
 
     $pdo->commit();
 
-    if ($imageQuarantined && is_file($quarantinePath)) {
-        @unlink($quarantinePath);
+    if ($imageQuarantined && is_file($quarantinePath) && !@unlink($quarantinePath)) {
+        if ($imageAbsolute !== '' && !is_file($imageAbsolute)) {
+            @rename($quarantinePath, $imageAbsolute);
+        }
     }
 
     redirect('/tadeo-admin/product-trash.php?msg=purged');
