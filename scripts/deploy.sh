@@ -80,6 +80,7 @@ set cmd:fail-exit yes
 set ftp:ssl-force true
 set ftp:ssl-protect-data true
 set ftp:passive-mode true
+set ftp:list-options -a
 set ssl:verify-certificate yes
 EOF
 }
@@ -92,8 +93,9 @@ set cmd:fail-exit yes
 set ftp:ssl-force true
 set ftp:ssl-protect-data true
 set ftp:passive-mode true
+set ftp:list-options -a
 set ssl:verify-certificate yes
-mirror --no-perms --skip-noaccess \
+mirror --no-perms \
   --exclude-glob includes/config.local.php \
   --exclude-glob includes/recovery.local.php \
   --exclude-glob uploads/.trash-cleanup-last-run \
@@ -189,7 +191,7 @@ fi
 
 if (( upload_count == 0 && delete_count == 0 )); then
   echo
-echo "Host and repo deployable files are already identical. Nothing to transfer or delete."
+  echo "Host and repo deployable files are already identical. Nothing to transfer or delete."
   echo "Deploy completed with zero remote changes."
   exit 0
 fi
