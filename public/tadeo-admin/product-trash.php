@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/admin_header.php';
+require_once __DIR__ . '/../includes/trash_cleanup.php';
 
 $admin = require_admin();
 $pdo = db();
@@ -18,18 +19,6 @@ function ensure_product_trash_column(PDO $pdo): void
     }
 }
 
-function purge_old_trashed_products(PDO $pdo): int
-{
-    $stmt = $pdo->prepare("
-        DELETE FROM products
-        WHERE deleted_at IS NOT NULL
-          AND deleted_at < DATE_SUB(NOW(), INTERVAL 30 DAY)
-    ");
-    $stmt->execute();
-
-    return $stmt->rowCount();
-}
-
 function product_trash_flash(string $msg): string
 {
     return match ($msg) {
@@ -41,7 +30,14 @@ function product_trash_flash(string $msg): string
 }
 
 ensure_product_trash_column($pdo);
-$autoPurged = purge_old_trashed_products($pdo);
+$autoPurged = 0;
+$autoPurgeError = false;
+
+try {
+    $autoPurged = trash_cleanup_products($pdo);
+} catch (Throwable $e) {
+    $autoPurgeError = true;
+}
 
 $products = $pdo->query("
     SELECT
@@ -168,7 +164,7 @@ $flash = product_trash_flash((string)($_GET['msg'] ?? ''));
                     <div>
                         <p class="admin-muted">
                             Produktet në kosh nuk shfaqen në menunë publike. Mund t’i rikthesh si të fshehura ose t’i fshish përgjithmonë.
-                            Produktet që qëndrojnë këtu më shumë se <strong>30 ditë</strong> pastrohen automatikisht nga faqja kryesore e menusë.
+                            Produktet që qëndrojnë këtu më shumë se <strong>30 ditë</strong> pastrohen automatikisht bashkë me imazhin e tyre kur ai nuk përdoret diku tjetër.
                         </p>
                     </div>
 
@@ -179,6 +175,10 @@ $flash = product_trash_flash((string)($_GET['msg'] ?? ''));
 
                 <?php if ($autoPurged > 0): ?>
                     <div class="msg"><?= e($autoPurged) ?> produkte të vjetra u fshinë automatikisht.</div>
+                <?php endif; ?>
+
+                <?php if ($autoPurgeError): ?>
+                    <div class="error">Cleanup-i automatik nuk u përfundua plotësisht. Asnjë dështim cleanup-i nuk duhet të prishë menunë; kontrollo Menu Audit për file të palidhura.</div>
                 <?php endif; ?>
 
                 <?php if ($flash !== ''): ?>
