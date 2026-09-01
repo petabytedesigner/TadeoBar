@@ -5,24 +5,24 @@ const SITE_IP_GUARD_MAX_FAILED_LOGINS = 15;
 const SITE_IP_GUARD_FAILURE_WINDOW_HOURS = 24;
 const SITE_IP_GUARD_BLOCK_HOURS = 24;
 
-function site_ip_guard_hash(): string
+function site_ip_guard_hash(): ?string
 {
     $ip = trim((string)($_SERVER['REMOTE_ADDR'] ?? ''));
-    if ($ip === '') {
-        $ip = 'unknown';
+
+    if ($ip === '' || filter_var($ip, FILTER_VALIDATE_IP) === false) {
+        return null;
     }
 
     return hash('sha256', 'tadeo-security-ip|' . $ip);
 }
 
-function site_ip_guard_ensure_storage(PDO $pdo): void
+function site_ip_guard_missing_table(Throwable $e): bool
 {
-    static $ready = false;
+    return $e instanceof PDOException && (string)$e->getCode() === '42S02';
+}
 
-    if ($ready) {
-        return;
-    }
-
+function site_ip_guard_create_storage(PDO $pdo): void
+{
     $pdo->exec(
         "CREATE TABLE IF NOT EXISTS `security_ip_guard` (
             `ip_hash` char(64) NOT NULL,
@@ -35,48 +35,63 @@ function site_ip_guard_ensure_storage(PDO $pdo): void
             KEY `idx_security_ip_guard_blocked_until` (`blocked_until`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
-
-    $ready = true;
 }
 
 function site_ip_guard_blocked(PDO $pdo): bool
 {
-    site_ip_guard_ensure_storage($pdo);
-
-    $stmt = $pdo->prepare(
-        'SELECT blocked_until FROM security_ip_guard WHERE ip_hash = ? LIMIT 1'
-    );
-    $stmt->execute([site_ip_guard_hash()]);
-    $blockedUntil = $stmt->fetchColumn();
-
-    if ($blockedUntil === false || $blockedUntil === null || trim((string)$blockedUntil) === '') {
+    $ipHash = site_ip_guard_hash();
+    if ($ipHash === null) {
         return false;
     }
 
-    $blockedTimestamp = strtotime((string)$blockedUntil);
-    if ($blockedTimestamp !== false && $blockedTimestamp > time()) {
+    try {
+        $stmt = $pdo->prepare(
+            'SELECT blocked_until, TIMESTAMPDIFF(SECOND, NOW(), blocked_until) AS seconds_remaining '
+            . 'FROM security_ip_guard WHERE ip_hash = ? LIMIT 1'
+        );
+        $stmt->execute([$ipHash]);
+        $row = $stmt->fetch();
+    } catch (Throwable $e) {
+        if (!site_ip_guard_missing_table($e)) {
+            throw $e;
+        }
+
+        site_ip_guard_create_storage($pdo);
+        return false;
+    }
+
+    if ($row === false || $row['blocked_until'] === null) {
+        return false;
+    }
+
+    if ((int)$row['seconds_remaining'] > 0) {
         return true;
     }
 
     $stmt = $pdo->prepare('DELETE FROM security_ip_guard WHERE ip_hash = ?');
-    $stmt->execute([site_ip_guard_hash()]);
+    $stmt->execute([$ipHash]);
 
     return false;
 }
 
-function site_ip_guard_register_failed_login(PDO $pdo): bool
+function site_ip_guard_register_failed_login(PDO $pdo, bool $retryAfterCreate = true): bool
 {
-    site_ip_guard_ensure_storage($pdo);
-
     $ipHash = site_ip_guard_hash();
+    if ($ipHash === null) {
+        return false;
+    }
+
     $windowHours = SITE_IP_GUARD_FAILURE_WINDOW_HOURS;
     $blockHours = SITE_IP_GUARD_BLOCK_HOURS;
+    $windowSeconds = $windowHours * 3600;
 
     $pdo->beginTransaction();
 
     try {
         $stmt = $pdo->prepare(
-            'SELECT failed_attempts, window_started_at, blocked_until '
+            'SELECT failed_attempts, blocked_until, '
+            . 'TIMESTAMPDIFF(SECOND, window_started_at, NOW()) AS window_age_seconds, '
+            . 'TIMESTAMPDIFF(SECOND, NOW(), blocked_until) AS block_seconds_remaining '
             . 'FROM security_ip_guard WHERE ip_hash = ? FOR UPDATE'
         );
         $stmt->execute([$ipHash]);
@@ -92,20 +107,13 @@ function site_ip_guard_register_failed_login(PDO $pdo): bool
             return false;
         }
 
-        $blockedUntil = trim((string)($row['blocked_until'] ?? ''));
-        if ($blockedUntil !== '') {
-            $blockedTimestamp = strtotime($blockedUntil);
-            if ($blockedTimestamp !== false && $blockedTimestamp > time()) {
-                $pdo->commit();
-                return true;
-            }
+        if ($row['blocked_until'] !== null && (int)$row['block_seconds_remaining'] > 0) {
+            $pdo->commit();
+            return true;
         }
 
-        $windowStarted = strtotime((string)$row['window_started_at']);
-        $windowExpired = $windowStarted === false
-            || $windowStarted <= (time() - ($windowHours * 3600));
-
-        if ($windowExpired) {
+        $windowExpired = (int)$row['window_age_seconds'] >= $windowSeconds;
+        if ($row['blocked_until'] !== null || $windowExpired) {
             $stmt = $pdo->prepare(
                 'UPDATE security_ip_guard '
                 . 'SET failed_attempts = 1, window_started_at = NOW(), blocked_until = NULL '
@@ -130,7 +138,7 @@ function site_ip_guard_register_failed_login(PDO $pdo): bool
         }
 
         $stmt = $pdo->prepare(
-            'UPDATE security_ip_guard SET failed_attempts = ?, blocked_until = NULL WHERE ip_hash = ?'
+            'UPDATE security_ip_guard SET failed_attempts = ? WHERE ip_hash = ?'
         );
         $stmt->execute([$failedAttempts, $ipHash]);
         $pdo->commit();
@@ -140,19 +148,36 @@ function site_ip_guard_register_failed_login(PDO $pdo): bool
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
+
+        if ($retryAfterCreate && site_ip_guard_missing_table($e)) {
+            site_ip_guard_create_storage($pdo);
+            return site_ip_guard_register_failed_login($pdo, false);
+        }
+
         throw $e;
     }
 }
 
 function site_ip_guard_reset_after_success(PDO $pdo): void
 {
-    site_ip_guard_ensure_storage($pdo);
+    $ipHash = site_ip_guard_hash();
+    if ($ipHash === null) {
+        return;
+    }
 
-    $stmt = $pdo->prepare('DELETE FROM security_ip_guard WHERE ip_hash = ?');
-    $stmt->execute([site_ip_guard_hash()]);
+    try {
+        $stmt = $pdo->prepare('DELETE FROM security_ip_guard WHERE ip_hash = ?');
+        $stmt->execute([$ipHash]);
+    } catch (Throwable $e) {
+        if (!site_ip_guard_missing_table($e)) {
+            throw $e;
+        }
+
+        site_ip_guard_create_storage($pdo);
+    }
 }
 
-function site_ip_guard_deny_request(): never
+function site_ip_guard_deny_request(): void
 {
     if (!headers_sent()) {
         http_response_code(404);
