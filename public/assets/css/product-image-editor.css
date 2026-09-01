@@ -1,0 +1,168 @@
+.product-image-mode {
+    margin: 12px 0 14px;
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, .10);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .03);
+}
+
+.product-image-mode-title {
+    display: block;
+    margin-bottom: 9px;
+    font-weight: 800;
+}
+
+.product-image-mode-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.product-image-mode-option {
+    position: relative;
+    display: block;
+    cursor: pointer;
+}
+
+.product-image-mode-option input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.product-image-mode-option span {
+    display: block;
+    padding: 11px 12px;
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 12px;
+    text-align: center;
+    font-weight: 900;
+    background: rgba(255, 255, 255, .035);
+    transition: border-color .18s ease, background .18s ease, transform .18s ease;
+}
+
+.product-image-mode-option input:checked + span {
+    border-color: var(--gold, #d8b86a);
+    background: rgba(216, 184, 106, .12);
+}
+
+.product-image-mode-option:active span {
+    transform: scale(.985);
+}
+
+.product-image-edit-now {
+    margin-top: 10px;
+}
+
+.product-image-editor-actions {
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.product-image-editor-actions[hidden],
+.product-image-editor-notice[hidden],
+.product-image-editor-shell[hidden],
+.product-image-editor-warning[hidden] {
+    display: none !important;
+}
+
+.product-image-editor-notice {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: .88rem;
+    font-weight: 750;
+    line-height: 1.45;
+    border: 1px solid rgba(255, 255, 255, .12);
+    background: rgba(255, 255, 255, .04);
+}
+
+.product-image-editor-notice.is-ok {
+    color: #b7f5c5;
+    border-color: rgba(107, 196, 127, .32);
+    background: rgba(107, 196, 127, .10);
+}
+
+.product-image-editor-notice.is-error {
+    color: #ffb6b6;
+    border-color: rgba(214, 69, 69, .35);
+    background: rgba(214, 69, 69, .10);
+}
+
+body.product-image-editor-open {
+    overflow: hidden;
+}
+
+.product-image-editor-shell {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: rgba(0, 0, 0, .88);
+}
+
+.product-image-editor-shell-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    background: #111214;
+}
+
+.product-image-editor-container {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+}
+
+.product-image-editor-warning {
+    position: absolute;
+    z-index: 100005;
+    top: 12px;
+    left: 50%;
+    width: min(92%, 720px);
+    transform: translateX(-50%);
+    padding: 11px 14px;
+    border: 1px solid rgba(214, 69, 69, .55);
+    border-radius: 12px;
+    color: #fff0f0;
+    background: rgba(126, 26, 26, .96);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, .38);
+    font-weight: 800;
+    line-height: 1.4;
+    text-align: center;
+}
+
+@media (min-width: 900px) {
+    .product-image-editor-shell {
+        padding: 3vh 3vw;
+    }
+
+    .product-image-editor-shell-inner {
+        width: min(1500px, 94vw);
+        height: 94vh;
+        border: 1px solid rgba(216, 184, 106, .28);
+        border-radius: 18px;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, .62);
+    }
+}
+
+@media (max-width: 620px) {
+    .product-image-mode-options {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .product-image-editor-actions .btn,
+    .product-image-editor-actions button {
+        width: 100%;
+    }
+}
