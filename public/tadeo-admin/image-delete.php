@@ -130,6 +130,8 @@ if (!is_file($absolutePath)) {
 }
 
 $pdo = db();
+$trashAbsolute = null;
+$movedToTrash = false;
 
 try {
     ensure_image_trash_table($pdo);
@@ -213,9 +215,9 @@ try {
     $stmt->execute([$relativePath, $trashRelative, $ownerType, $ownerId, $menuNumber, $nameSq, $nameEn]);
 
     if (!rename($absolutePath, $trashAbsolute)) {
-        $pdo->rollBack();
-        redirect('/tadeo-admin/images.php?msg=delete_failed');
+        throw new RuntimeException('Imazhi nuk u zhvendos dot në kosh.');
     }
+    $movedToTrash = true;
 
     $pdo->commit();
 
@@ -223,6 +225,10 @@ try {
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
+    }
+
+    if ($movedToTrash && $trashAbsolute !== null && is_file($trashAbsolute) && !is_file($absolutePath)) {
+        @rename($trashAbsolute, $absolutePath);
     }
 
     redirect('/tadeo-admin/images.php?msg=error');
