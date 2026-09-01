@@ -19,7 +19,6 @@ STATIC_ALL_TMP=".all-image-upload.tmp"
 
 echo "Deploying $LOCAL_DIR to $FTP_HOST:$REMOTE_DIR"
 echo "Preserving server DB/recovery config and uploaded images..."
-echo "Forcing a full transfer of all tracked deployable files..."
 
 lftp -u "$FTP_USER","$FTP_PASS" "$FTP_HOST" <<LFTP
 set cmd:fail-exit yes
@@ -27,7 +26,7 @@ set ftp:ssl-force true
 set ftp:ssl-protect-data true
 set ftp:passive-mode true
 set ssl:verify-certificate yes
-mirror -R --delete --transfer-all --verbose --no-perms \
+mirror -R --delete --verbose --no-perms \
   --exclude-glob includes/config.local.php \
   --exclude-glob includes/recovery.local.php \
   --exclude-glob assets/images/categories/all.webp \
@@ -49,8 +48,8 @@ mirror -R --delete --transfer-all --verbose --no-perms \
   --exclude-glob uploads/trash/categories/*.webp \
   "$LOCAL_DIR"/ "$REMOTE_DIR"/
 
-# InfinityFree FTP may reject direct STOR to a .webp filename. The mirror above
-# creates this tracked directory, so enter it directly instead of mkdir-ing it.
+# InfinityFree FTP may reject direct STOR to a .webp filename. Keep this
+# tracked static asset synchronized through a neutral temporary name.
 cd "$STATIC_ALL_DIR"
 rm -f "$STATIC_ALL_TMP"
 put "$STATIC_ALL_LOCAL" -o "$STATIC_ALL_TMP"
