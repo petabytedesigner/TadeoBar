@@ -4,10 +4,12 @@ declare(strict_types=1);
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/upload.php';
+require_once __DIR__ . '/../includes/product_ordering.php';
 require_once __DIR__ . '/../includes/admin_header.php';
 
 $admin = require_admin();
 $pdo = db();
+ensure_product_ordering_schema($pdo);
 
 $id = (int)($_GET['id'] ?? $_POST['id'] ?? 0);
 
@@ -22,14 +24,15 @@ $categories = $pdo->query("
     ORDER BY sort_order, id
 ")->fetchAll();
 
-$stmt = $pdo->prepare("SELECT * FROM products WHERE id = ? LIMIT 1");
+$stmt = $pdo->prepare("SELECT * FROM products WHERE id = ? AND deleted_at IS NULL LIMIT 1");
 $stmt->execute([$id]);
 $product = $stmt->fetch();
 
 if (!$product) {
-    redirect('/tadeo-admin/products.php?msg=Produkti nuk u gjet');
+    redirect('/tadeo-admin/products.php?msg=Produkti nuk u gjet ose është në kosh');
 }
 
+$maxMenuPosition = max(1, product_ordering_live_count($pdo));
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -60,10 +63,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $pdo,
                     $uploadPlan,
                     function (?string $imagePath) use ($pdo, $data, $id): void {
+                        product_ordering_move_live($pdo, $id, $data['menu_number']);
+
                         $stmt = $pdo->prepare("
                             UPDATE products
                             SET
-                                menu_number = ?,
                                 category_id = ?,
                                 name_sq = ?,
                                 name_en = ?,
@@ -72,10 +76,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 is_active = ?,
                                 sort_order = ?
                             WHERE id = ?
+                              AND deleted_at IS NULL
                         ");
 
                         $stmt->execute([
-                            $data['menu_number'],
                             $data['category_id'],
                             $data['name_sq'],
                             $data['name_en'],
@@ -85,6 +89,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $data['sort_order'],
                             $id,
                         ]);
+
+                        if ($stmt->rowCount() === 0) {
+                            $exists = $pdo->prepare("SELECT COUNT(*) FROM products WHERE id = ? AND deleted_at IS NULL");
+                            $exists->execute([$id]);
+                            if ((int)$exists->fetchColumn() !== 1) {
+                                throw new RuntimeException('Produkti nuk ekziston më në menunë aktive.');
+                            }
+                        }
                     }
                 );
 
@@ -129,7 +141,8 @@ $currentImageUrl = !empty($product['image_path']) ? '/' . ltrim((string)$product
                 <div class="form-grid">
                     <div>
                         <label>Numri i produktit</label>
-                        <input name="menu_number" type="number" min="1" value="<?= e($product['menu_number']) ?>" required>
+                        <input name="menu_number" type="number" min="1" max="<?= e($maxMenuPosition) ?>" value="<?= e($product['menu_number']) ?>" required>
+                        <div class="help-text">Pozicioni duhet të jetë 1–<?= e($maxMenuPosition) ?>. Kur ndryshon numrin, produktet ndërmjet zhvendosen automatikisht dhe menuja mbetet 1…N.</div>
                     </div>
 
                     <div>
