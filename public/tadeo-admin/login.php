@@ -13,6 +13,7 @@ $barName = site_bar_name();
 
 $error = '';
 $username = trim((string)($_POST['username'] ?? ''));
+$password = (string)($_POST['password'] ?? '');
 $resetSuccess = (string)($_GET['reset'] ?? '') === 'success';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -21,16 +22,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($username === '') {
         $error = 'Vendos username.';
     } elseif (is_login_blocked($username)) {
+        login_dummy_password_check($password);
         record_login_attempt($username, false);
         $error = 'Username ose password i gabuar.';
     } else {
-        $password = (string)($_POST['password'] ?? '');
         $admin = find_admin_by_username($username);
+        $passwordHash = $admin !== null
+            ? (string)$admin['password_hash']
+            : LOGIN_DUMMY_PASSWORD_HASH;
+        $passwordValid = password_verify($password, $passwordHash);
 
         if (
             $admin !== null
             && (int)$admin['is_active'] === 1
-            && password_verify($password, (string)$admin['password_hash'])
+            && $passwordValid
         ) {
             record_login_attempt($username, true);
             login_admin($admin);
