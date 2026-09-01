@@ -30,6 +30,7 @@ jobs:
           cd /tmp/filerobot-image-editor
           corepack enable
           yarn install --frozen-lockfile
+          yarn build:packages
           yarn build:js-bundle
 
       - name: Vendor bundle, license and provenance
@@ -46,7 +47,7 @@ jobs:
           Upstream repository: https://github.com/scaleflex/filerobot-image-editor
           Upstream tag: v4.9.1
           Upstream commit: ${UPSTREAM_COMMIT}
-          Build command: yarn build:js-bundle
+          Build commands: yarn build:packages && yarn build:js-bundle
           License: MIT (see LICENSE)
           EOF
           (
