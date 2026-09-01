@@ -24,7 +24,8 @@ CREATE TABLE IF NOT EXISTS `categories` (
 
 CREATE TABLE IF NOT EXISTS `products` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `menu_number` int unsigned NOT NULL,
+  `menu_number` int unsigned DEFAULT NULL,
+  `trash_menu_number` int unsigned DEFAULT NULL,
   `category_id` int unsigned NOT NULL,
   `name_sq` varchar(180) NOT NULL,
   `name_en` varchar(180) NOT NULL,
@@ -167,6 +168,69 @@ SET @sql = IF(
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+-- Add products.trash_menu_number only when it is missing.
+SET @sql = IF(
+  EXISTS(
+    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'products'
+      AND COLUMN_NAME = 'trash_menu_number'
+  ),
+  'SELECT 1',
+  'ALTER TABLE `products` ADD COLUMN `trash_menu_number` int unsigned NULL DEFAULT NULL AFTER `menu_number`'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Trashed products must be able to release menu_number; UNIQUE permits multiple NULLs.
+SET @sql = IF(
+  EXISTS(
+    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'products'
+      AND COLUMN_NAME = 'menu_number'
+      AND IS_NULLABLE = 'YES'
+  ),
+  'SELECT 1',
+  'ALTER TABLE `products` MODIFY COLUMN `menu_number` int unsigned NULL DEFAULT NULL'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Migrate legacy trash rows: preserve their former number, then release it.
+UPDATE `products`
+SET `trash_menu_number` = COALESCE(`trash_menu_number`, `menu_number`),
+    `menu_number` = NULL
+WHERE `deleted_at` IS NOT NULL
+  AND `menu_number` IS NOT NULL;
+
+-- Compact live products to a strict 1..N sequence while preserving their current order.
+DROP TEMPORARY TABLE IF EXISTS `tmp_tadeo_product_menu_order`;
+CREATE TEMPORARY TABLE `tmp_tadeo_product_menu_order` (
+  `id` int unsigned NOT NULL,
+  `new_menu_number` int unsigned NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MEMORY;
+
+SET @tadeo_menu_number := 0;
+INSERT INTO `tmp_tadeo_product_menu_order` (`id`, `new_menu_number`)
+SELECT `id`, (@tadeo_menu_number := @tadeo_menu_number + 1)
+FROM `products`
+WHERE `deleted_at` IS NULL
+ORDER BY (`menu_number` IS NULL), `menu_number`, `id`;
+
+UPDATE `products`
+SET `menu_number` = NULL
+WHERE `deleted_at` IS NULL;
+
+UPDATE `products` p
+INNER JOIN `tmp_tadeo_product_menu_order` t ON t.`id` = p.`id`
+SET p.`menu_number` = t.`new_menu_number`;
+
+DROP TEMPORARY TABLE `tmp_tadeo_product_menu_order`;
 
 -- Non-sensitive defaults. Existing settings are never overwritten.
 INSERT IGNORE INTO `settings` (`setting_key`, `setting_value`) VALUES
