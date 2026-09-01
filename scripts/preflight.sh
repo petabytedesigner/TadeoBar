@@ -15,8 +15,10 @@ ok() {
 
 echo "===== Bar Tadeo preflight ====="
 
-command -v php >/dev/null 2>&1 || fail "php is not installed"
-command -v lftp >/dev/null 2>&1 || fail "lftp is not installed"
+required_commands=(php lftp sha256sum mktemp find dirname)
+for command_name in "${required_commands[@]}"; do
+  command -v "$command_name" >/dev/null 2>&1 || fail "$command_name is not installed"
+done
 ok "Required commands are available"
 
 [ -f ".env" ] || fail ".env file not found"
@@ -71,7 +73,9 @@ grep -q 'SITE_IP_GUARD_MAX_FAILED_LOGINS = 15' public/includes/security_guard.ph
   || fail "IP guard failed-login threshold is not configured as expected"
 grep -q 'SITE_IP_GUARD_BLOCK_HOURS = 24' public/includes/security_guard.php \
   || fail "IP guard block duration is not configured as expected"
-ok "Security and database recovery structure is present"
+grep -q 'sha256sum' scripts/deploy.sh \
+  || fail "deploy.sh is not using SHA-256 content comparison"
+ok "Security, checksum deployment, and database recovery structure is present"
 
 php_files_checked=0
 while IFS= read -r -d '' file; do
@@ -79,6 +83,9 @@ while IFS= read -r -d '' file; do
   php_files_checked=$((php_files_checked + 1))
 done < <(find public -type f -name '*.php' ! -name 'config.local.php' ! -name 'recovery.local.php' -print0)
 ok "PHP syntax passed for ${php_files_checked} tracked application files"
+
+bash -n scripts/deploy.sh || fail "Shell syntax error: scripts/deploy.sh"
+ok "Deploy script shell syntax passed"
 
 if [ -d .git ] && command -v git >/dev/null 2>&1; then
   git check-ignore -q .env || fail ".env is not ignored by Git"
@@ -108,5 +115,6 @@ else
   echo "WARNING: .git metadata not found; Git tracking checks were skipped."
 fi
 
-echo "NOTE: Server-side includes/config.local.php is intentionally preserved by deploy.sh."
+echo "NOTE: Server-side includes/config.local.php and includes/recovery.local.php are intentionally preserved by deploy.sh."
+echo "NOTE: Runtime product/category/trash images and uploads/.trash-cleanup-last-run are preserved by deploy.sh."
 echo "===== Preflight passed ====="
