@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - '.github/workflows/vendor-filerobot.yml'
+      - '.github/vendor-filerobot-trigger'
   workflow_dispatch:
 
 permissions:
