@@ -43,6 +43,7 @@ required_files=(
   "public/includes/password_recovery.php"
   "public/includes/smtp_mailer.php"
   "public/includes/upload.php"
+  "public/includes/product_ordering.php"
   "public/tadeo-admin/login.php"
   "public/tadeo-admin/forgot-password.php"
   "public/tadeo-admin/verify-reset-code.php"
@@ -50,6 +51,9 @@ required_files=(
   "public/tadeo-admin/recovery-setup.php"
   "public/tadeo-admin/product-create.php"
   "public/tadeo-admin/product-edit.php"
+  "public/tadeo-admin/product-delete.php"
+  "public/tadeo-admin/product-restore.php"
+  "public/tadeo-admin/product-trash.php"
   "public/tadeo-admin/category-create.php"
   "public/tadeo-admin/category-edit.php"
   "public/assets/js/product-image-preview.js"
@@ -62,12 +66,13 @@ required_files=(
   "database/schema.sql"
   "database/migrations/20260831-password-recovery.sql"
   "database/migrations/20260901-security-ip-guard.sql"
+  "database/migrations/20260901-product-menu-ordering.sql"
 )
 
 for file in "${required_files[@]}"; do
   [ -f "$file" ] || fail "Required file missing: $file"
 done
-ok "Required application, security, recovery, and image-editor files exist"
+ok "Required application, security, recovery, ordering, and image-editor files exist"
 
 grep -q 'Require all denied' public/includes/.htaccess \
   || fail "public/includes/.htaccess does not deny direct access"
@@ -88,6 +93,22 @@ grep -q 'SITE_IP_GUARD_BLOCK_HOURS = 24' public/includes/security_guard.php \
 grep -q 'sha256sum' scripts/deploy.sh \
   || fail "deploy.sh is not using SHA-256 content comparison"
 ok "Security, checksum deployment, and database recovery structure is present"
+
+grep -q 'trash_menu_number' database/schema.sql \
+  || fail "database/schema.sql is missing trash-safe menu numbering"
+grep -q 'trash_menu_number' database/migrations/20260901-product-menu-ordering.sql \
+  || fail "Product menu-ordering migration is incomplete"
+grep -q 'function ensure_product_ordering_schema' public/includes/product_ordering.php \
+  || fail "Product ordering schema helper is missing"
+grep -q 'product_ordering_prepare_insert' public/tadeo-admin/product-create.php \
+  || fail "Product create is not preserving strict 1..N ordering"
+grep -q 'product_ordering_move_live' public/tadeo-admin/product-edit.php \
+  || fail "Product edit is not preserving strict 1..N ordering"
+grep -q 'product_ordering_trash' public/tadeo-admin/product-delete.php \
+  || fail "Product trash does not release and compact menu numbering"
+grep -q 'product_ordering_restore' public/tadeo-admin/product-restore.php \
+  || fail "Product restore does not reinsert into strict menu numbering"
+ok "Strict 1..N product ordering and trash-safe restore integration is present"
 
 editor_expected_hash='ff0d274db699974b2096786549a424473438a72971da416d54cd68c05cd282df'
 read -r editor_actual_hash _ < <(sha256sum public/assets/vendor/filerobot-image-editor/filerobot-image-editor.min.js)
