@@ -10,6 +10,29 @@ Digital menu and WiFi website for Bar Tadeo in Durrës.
 - Languages: Albanian and English
 - Currency: ALL
 
+## Login brute-force protection
+
+Admin login has two server-side protection layers:
+
+- soft guard: 5 failed attempts for the same username + IP within 10 minutes
+- hard IP guard: 15 failed login attempts from the same IP within a 24-hour counter window trigger a 24-hour block
+- the hard counter is independent of username, so rotating usernames does not bypass it
+- a successful login resets the hard counter for that IP
+- only a SHA-256 IP hash is stored; the raw IP is not stored in the guard table
+- an actively blocked IP is denied across the dynamic Bar Tadeo application, including the public menu/API and admin/recovery routes
+- other IP addresses remain unaffected
+- client-facing HTML/JavaScript does not expose the thresholds or block duration
+- the ordinary soft-limit response is intentionally indistinguishable from invalid credentials
+- a hard-blocked request receives a generic `404 Not Found` response without `Retry-After` or a lockout explanation
+
+The hard guard state is stored in `security_ip_guard`. Its schema is present in `database/schema.sql`, and the focused migration is:
+
+```text
+database/migrations/20260901-security-ip-guard.sql
+```
+
+`public/includes/security_guard.php` also creates the table automatically if an existing live installation has not run the migration yet.
+
 ## Admin recovery
 
 The admin login includes a Gmail SMTP password-recovery flow:
@@ -41,7 +64,7 @@ A non-secret DB template is available at:
 public/includes/config.local.example.php
 ```
 
-For manual/fallback database upgrades, the focused idempotent migration remains available at:
+For manual/fallback database upgrades, the focused idempotent recovery migration remains available at:
 
 ```text
 database/migrations/20260831-password-recovery.sql
@@ -78,7 +101,7 @@ For a brand-new server/restore, `config.local.php` must still be created on that
 ```text
 public/                 Public PHP application and assets
 public/tadeo-admin/     Admin panel + Forgot Password + one-time recovery setup
-public/includes/        Shared PHP helpers, DB config loader, recovery logic and SMTP client
+public/includes/        Shared PHP helpers, DB/security config loader, recovery logic and SMTP client
 database/schema.sql     Complete non-secret application schema
 database/migrations/    Focused upgrade scripts for existing installations
 database/seed/          Sanitized historical menu snapshot
@@ -89,7 +112,7 @@ RESTORE.md              Full restore/recovery guide
 
 ## Database recovery
 
-`database/schema.sql` defines the current application structure without storing real admin accounts, password hashes, reset codes, WiFi passwords, visits, trash records, or credentials.
+`database/schema.sql` defines the current application structure without storing real admin accounts, password hashes, reset codes, WiFi passwords, visits, trash records, IP guard runtime state, or credentials.
 
 `database/seed/tadeobar-menu.sql` is a sanitized menu snapshot generated on May 17, 2026. It is a fallback for menu recovery, not the authoritative final live database export.
 
