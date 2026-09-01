@@ -1,0 +1,140 @@
+name: Security Guard Check
+
+on:
+  push:
+    paths:
+      - '.github/workflows/security-guard-check.yml'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: tadeo_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure PHP MySQL support
+        run: |
+          if ! php -m | grep -qi '^pdo_mysql$'; then
+            sudo apt-get update
+            sudo apt-get install -y php-mysql
+          fi
+          php -m | grep -qi '^pdo_mysql$'
+
+      - name: PHP syntax
+        run: |
+          php -l public/includes/security_guard.php
+          php -l public/includes/db.php
+          php -l public/includes/auth.php
+          php -l public/tadeo-admin/login.php
+
+      - name: Run security guard integration test
+        env:
+          DB_DSN: mysql:host=127.0.0.1;port=3306;dbname=tadeo_test;charset=utf8mb4
+          DB_USER: root
+          DB_PASS: root
+        run: |
+          cat > /tmp/security-guard-test.php <<'PHP'
+          <?php
+          declare(strict_types=1);
+
+          require __DIR__ . '/../home/runner/work/TadeoBar/TadeoBar/public/includes/security_guard.php';
+
+          $pdo = new PDO(getenv('DB_DSN'), getenv('DB_USER'), getenv('DB_PASS'), [
+              PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+              PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+          ]);
+
+          $migration = file_get_contents('/home/runner/work/TadeoBar/TadeoBar/database/migrations/20260901-security-ip-guard.sql');
+          if ($migration === false) {
+              throw new RuntimeException('Migration could not be read.');
+          }
+          $pdo->exec($migration);
+
+          function assert_true(bool $value, string $message): void {
+              if (!$value) {
+                  fwrite(STDERR, "FAIL: {$message}\n");
+                  exit(1);
+              }
+          }
+
+          function assert_false(bool $value, string $message): void {
+              assert_true(!$value, $message);
+          }
+
+          $_SERVER['REMOTE_ADDR'] = '203.0.113.10';
+          assert_false(site_ip_guard_blocked($pdo), 'fresh IP must not be blocked');
+
+          for ($i = 1; $i <= 14; $i++) {
+              assert_false(
+                  site_ip_guard_register_failed_login($pdo),
+                  "attempt {$i} must not hard-block"
+              );
+          }
+
+          assert_false(site_ip_guard_blocked($pdo), '14 attempts must still be allowed');
+          assert_true(site_ip_guard_register_failed_login($pdo), '15th attempt must hard-block');
+          assert_true(site_ip_guard_blocked($pdo), 'blocked IP must remain blocked');
+
+          $blockedHash = site_ip_guard_hash();
+          assert_true(is_string($blockedHash) && strlen($blockedHash) === 64, 'IP hash must be SHA-256');
+
+          $stmt = $pdo->prepare('SELECT failed_attempts, TIMESTAMPDIFF(SECOND, NOW(), blocked_until) AS remaining FROM security_ip_guard WHERE ip_hash = ?');
+          $stmt->execute([$blockedHash]);
+          $blockedRow = $stmt->fetch();
+          assert_true($blockedRow !== false, 'blocked state row must exist');
+          assert_true((int)$blockedRow['failed_attempts'] === 15, 'blocked state must record 15 failures');
+          assert_true((int)$blockedRow['remaining'] > 86000, 'block should be approximately 24 hours');
+
+          $_SERVER['REMOTE_ADDR'] = '198.51.100.20';
+          assert_false(site_ip_guard_blocked($pdo), 'different IP must remain unaffected');
+          assert_false(site_ip_guard_register_failed_login($pdo), 'first failure on other IP must not block');
+          site_ip_guard_reset_after_success($pdo);
+          assert_false(site_ip_guard_blocked($pdo), 'successful login reset must clear other IP state');
+
+          $_SERVER['REMOTE_ADDR'] = '192.0.2.30';
+          $pdo->prepare(
+              'INSERT INTO security_ip_guard (ip_hash, failed_attempts, window_started_at) '
+              . 'VALUES (?, 14, DATE_SUB(NOW(), INTERVAL 25 HOUR))'
+          )->execute([site_ip_guard_hash()]);
+          assert_false(
+              site_ip_guard_register_failed_login($pdo),
+              'expired 24-hour failure window must restart instead of block'
+          );
+          $stmt = $pdo->prepare('SELECT failed_attempts FROM security_ip_guard WHERE ip_hash = ?');
+          $stmt->execute([site_ip_guard_hash()]);
+          assert_true((int)$stmt->fetchColumn() === 1, 'expired failure window must restart at 1');
+
+          $_SERVER['REMOTE_ADDR'] = '203.0.113.10';
+          $pdo->prepare('UPDATE security_ip_guard SET blocked_until = DATE_SUB(NOW(), INTERVAL 1 SECOND) WHERE ip_hash = ?')
+              ->execute([$blockedHash]);
+          assert_false(site_ip_guard_blocked($pdo), 'expired block must be released');
+          $stmt = $pdo->prepare('SELECT COUNT(*) FROM security_ip_guard WHERE ip_hash = ?');
+          $stmt->execute([$blockedHash]);
+          assert_true((int)$stmt->fetchColumn() === 0, 'expired block row must be cleaned up');
+
+          $_SERVER['REMOTE_ADDR'] = 'not-an-ip';
+          assert_true(site_ip_guard_hash() === null, 'invalid REMOTE_ADDR must fail open');
+          assert_false(site_ip_guard_register_failed_login($pdo), 'invalid REMOTE_ADDR must not create a shared block');
+
+          $columns = $pdo->query('SHOW COLUMNS FROM security_ip_guard')->fetchAll(PDO::FETCH_COLUMN);
+          assert_false(in_array('ip', $columns, true), 'raw IP column must not exist');
+          assert_true(in_array('ip_hash', $columns, true), 'hashed IP column must exist');
+
+          echo "Security guard integration test passed.\n";
+          PHP
+
+          php /tmp/security-guard-test.php
