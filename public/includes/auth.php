@@ -7,6 +7,7 @@ require_once __DIR__ . '/helpers.php';
 const ADMIN_SESSION_TIMEOUT_SECONDS = 3600;
 const LOGIN_MAX_FAILED_ATTEMPTS = 5;
 const LOGIN_LOCK_MINUTES = 10;
+const LOGIN_ATTEMPT_RETENTION_DAYS = 30;
 const LOGIN_DUMMY_PASSWORD_HASH = '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.';
 
 function admin_session_start(): void
@@ -113,9 +114,18 @@ function logout_admin(): void
 
 function client_ip_hash(): string
 {
-    $ip = (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+    $ip = trim((string)($_SERVER['REMOTE_ADDR'] ?? ''));
+
+    if ($ip === '' || filter_var($ip, FILTER_VALIDATE_IP) === false) {
+        $ip = 'unavailable';
+    }
 
     return hash('sha256', 'tadeo-admin-login|' . $ip);
+}
+
+function login_attempt_username(string $username): string
+{
+    return mb_substr(trim($username), 0, 120, 'UTF-8');
 }
 
 function login_dummy_password_check(string $password): void
@@ -150,9 +160,15 @@ function is_login_blocked(string $username): bool
           AND success = 0
           AND attempted_at >= DATE_SUB(NOW(), INTERVAL {$minutes} MINUTE)
     ");
-    $stmt->execute([$username, client_ip_hash()]);
+    $stmt->execute([login_attempt_username($username), client_ip_hash()]);
 
     return (int)$stmt->fetchColumn() >= LOGIN_MAX_FAILED_ATTEMPTS;
+}
+
+function cleanup_old_login_attempts(PDO $pdo): void
+{
+    $days = LOGIN_ATTEMPT_RETENTION_DAYS;
+    $pdo->exec("DELETE FROM login_attempts WHERE attempted_at < DATE_SUB(NOW(), INTERVAL {$days} DAY)");
 }
 
 function record_login_attempt(string $username, bool $success): void
@@ -164,10 +180,12 @@ function record_login_attempt(string $username, bool $success): void
         VALUES (?, ?, ?)
     ");
     $stmt->execute([
-        $username,
+        login_attempt_username($username),
         client_ip_hash(),
         $success ? 1 : 0,
     ]);
+
+    cleanup_old_login_attempts($pdo);
 
     if ($success) {
         site_ip_guard_reset_after_success($pdo);
