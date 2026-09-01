@@ -41,9 +41,15 @@ ErrorDocument 504 /system-pages/error.php?code=504
     ExpiresByType text/javascript "access plus 30 days"
 </IfModule>
 
+<IfModule mod_setenvif.c>
+    SetEnvIf Request_URI "^/uploads/" tadeo_revalidate_asset=1
+    SetEnvIf Request_URI "^/assets/images/categories/all\.webp$" tadeo_revalidate_asset=1
+</IfModule>
+
 <IfModule mod_headers.c>
     <FilesMatch "\.(webp|png|jpg|jpeg|ico|svg|css|js)$">
-        Header set Cache-Control "public, max-age=2592000"
+        Header set Cache-Control "public, max-age=2592000" env=!tadeo_revalidate_asset
+        Header set Cache-Control "no-cache, must-revalidate" env=tadeo_revalidate_asset
     </FilesMatch>
 </IfModule>
 # STATIC ASSET CACHE END
