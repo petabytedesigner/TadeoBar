@@ -336,6 +336,7 @@ foreach ($slugCounts as $slug => $count) {
 }
 
 $menuNumberCounts = [];
+$liveMenuNumbers = [];
 foreach ($products as $product) {
     if (($product['deleted_at'] ?? null) !== null) {
         continue;
@@ -345,6 +346,7 @@ foreach ($products as $product) {
 
     if ($menuNumber > 0) {
         $menuNumberCounts[$menuNumber] = ($menuNumberCounts[$menuNumber] ?? 0) + 1;
+        $liveMenuNumbers[] = $menuNumber;
     }
 }
 
@@ -439,7 +441,33 @@ foreach ($products as $product) {
 
 foreach ($menuNumberCounts as $menuNumber => $count) {
     if ($count > 1) {
-        audit_add($warnings, 'warning', 'Numër menuje i përsëritur', '#' . $menuNumber . ' përdoret ' . $count . ' herë.');
+        audit_add($critical, 'critical', 'Numër menuje i përsëritur', '#' . $menuNumber . ' përdoret ' . $count . ' herë.');
+    }
+}
+
+sort($liveMenuNumbers, SORT_NUMERIC);
+if ($liveMenuNumbers !== []) {
+    $expectedMenuNumbers = range(1, count($liveMenuNumbers));
+
+    if ($liveMenuNumbers !== $expectedMenuNumbers) {
+        $missingNumbers = array_values(array_diff($expectedMenuNumbers, $liveMenuNumbers));
+        $unexpectedNumbers = array_values(array_diff($liveMenuNumbers, $expectedMenuNumbers));
+        $details = [];
+
+        if ($missingNumbers !== []) {
+            $details[] = 'mungojnë: ' . implode(', ', $missingNumbers);
+        }
+
+        if ($unexpectedNumbers !== []) {
+            $details[] = 'jashtë intervalit 1–N: ' . implode(', ', $unexpectedNumbers);
+        }
+
+        audit_add(
+            $critical,
+            'critical',
+            'Numërimi i menusë nuk është strikt 1…N',
+            'Produktet jashtë koshit duhet të përdorin saktësisht numrat 1–' . count($liveMenuNumbers) . '. ' . implode(' · ', $details)
+        );
     }
 }
 
@@ -726,7 +754,7 @@ function audit_render_plain_path_list(array $paths, string $emptyText): void
             </div>
 
             <div class="audit-note">
-                Ky audit nuk ndryshon databazën dhe nuk fshin file. Produktet pranohen me raport portrait 0.55–0.82, minimum 600×1000 px; mbi 500 KB shfaqet si paralajmërim dhe mbi 800 KB si limit maksimal.
+                Ky audit nuk ndryshon databazën dhe nuk fshin file. Produktet pranohen me raport portrait 0.55–0.82, minimum 600×1000 px; mbi 500 KB shfaqet si paralajmërim dhe mbi 800 KB si limit maksimal. Numërimi i produkteve jashtë koshit kontrollohet strikt 1…N.
             </div>
 
             <section class="audit-summary">

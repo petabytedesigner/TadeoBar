@@ -22,8 +22,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($username === '') {
         $error = 'Vendos username.';
     } elseif (is_login_blocked($username)) {
-        login_dummy_password_check($password);
-        record_login_attempt($username, false);
+        $admin = find_admin_by_username($username);
+        $passwordHash = $admin !== null
+            ? (string)$admin['password_hash']
+            : LOGIN_DUMMY_PASSWORD_HASH;
+        $passwordValid = password_verify($password, $passwordHash);
+        $credentialsValid = $admin !== null
+            && (int)$admin['is_active'] === 1
+            && $passwordValid;
+
+        if (!$credentialsValid) {
+            record_login_attempt($username, false);
+        }
+
         $error = 'Username ose password i gabuar.';
     } else {
         $admin = find_admin_by_username($username);
@@ -72,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?= csrf_field() ?>
 
             <label>Username</label>
-            <input name="username" value="<?= e($username) ?>" autocomplete="username" required>
+            <input name="username" value="<?= e($username) ?>" autocomplete="username" maxlength="120" required>
 
             <label>Password</label>
             <input name="password" type="password" autocomplete="current-password" required>

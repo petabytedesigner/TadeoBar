@@ -30,9 +30,12 @@ if ($id <= 0) {
     redirect('/tadeo-admin/image-trash.php?msg=invalid');
 }
 
-try {
-    $pdo = db();
+$pdo = db();
+$movedToLive = false;
+$originalAbsolute = '';
+$trashAbsolute = '';
 
+try {
     $stmt = $pdo->prepare("SELECT * FROM image_trash WHERE id = ? LIMIT 1");
     $stmt->execute([$id]);
     $image = $stmt->fetch();
@@ -49,7 +52,9 @@ try {
         (!str_starts_with($originalPath, 'uploads/products/') && !str_starts_with($originalPath, 'uploads/categories/')) ||
         !str_starts_with($trashPath, 'uploads/trash/') ||
         str_contains($originalPath, '..') ||
-        str_contains($trashPath, '..')
+        str_contains($trashPath, '..') ||
+        str_contains($originalPath, "\0") ||
+        str_contains($trashPath, "\0")
     ) {
         redirect('/tadeo-admin/image-trash.php?msg=invalid');
     }
@@ -67,13 +72,16 @@ try {
 
     $originalDir = dirname($originalAbsolute);
 
-    if (!is_dir($originalDir)) {
-        mkdir($originalDir, 0755, true);
+    if (!is_dir($originalDir) && !mkdir($originalDir, 0755, true) && !is_dir($originalDir)) {
+        throw new RuntimeException('Folderi i rikthimit nuk u krijua dot.');
     }
 
+    $pdo->beginTransaction();
+
     if (!rename($trashAbsolute, $originalAbsolute)) {
-        redirect('/tadeo-admin/image-trash.php?msg=error');
+        throw new RuntimeException('Imazhi nuk u rikthye dot në folderin aktiv.');
     }
+    $movedToLive = true;
 
     if (($image['owner_type'] ?? '') === 'product' && !empty($image['owner_id'])) {
         $deletedWhere = restore_column_exists($pdo, 'products', 'deleted_at') ? 'AND deleted_at IS NULL' : '';
@@ -107,7 +115,21 @@ try {
     $delete = $pdo->prepare("DELETE FROM image_trash WHERE id = ?");
     $delete->execute([$id]);
 
+    if ($delete->rowCount() !== 1) {
+        throw new RuntimeException('Record-i i koshit nuk u përditësua dot.');
+    }
+
+    $pdo->commit();
+
     redirect('/tadeo-admin/image-trash.php?msg=restored');
 } catch (Throwable $e) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+
+    if ($movedToLive && $originalAbsolute !== '' && $trashAbsolute !== '' && is_file($originalAbsolute) && !is_file($trashAbsolute)) {
+        @rename($originalAbsolute, $trashAbsolute);
+    }
+
     redirect('/tadeo-admin/image-trash.php?msg=error');
 }

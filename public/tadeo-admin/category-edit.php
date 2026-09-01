@@ -46,35 +46,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Slug duhet të ketë vetëm shkronja të vogla, numra dhe minus.';
         } else {
             try {
-                $imagePath = handle_category_icon_upload(
+                $uploadPlan = prepare_category_icon_upload(
                     'icon_image_file',
                     $data['name_en'] !== '' ? $data['name_en'] : $data['name_sq'],
                     $category['icon_image_path'] ?? null
                 );
 
-                $stmt = $pdo->prepare("
-                    UPDATE categories
-                    SET
-                        slug = ?,
-                        name_sq = ?,
-                        name_en = ?,
-                        icon = ?,
-                        icon_image_path = ?,
-                        sort_order = ?,
-                        is_active = ?
-                    WHERE id = ?
-                ");
+                run_prepared_image_upload_transaction(
+                    $pdo,
+                    $uploadPlan,
+                    function (?string $imagePath) use ($pdo, $data, $id): void {
+                        $stmt = $pdo->prepare("
+                            UPDATE categories
+                            SET
+                                slug = ?,
+                                name_sq = ?,
+                                name_en = ?,
+                                icon = ?,
+                                icon_image_path = ?,
+                                sort_order = ?,
+                                is_active = ?
+                            WHERE id = ?
+                        ");
 
-                $stmt->execute([
-                    $data['slug'],
-                    $data['name_sq'],
-                    $data['name_en'],
-                    $data['icon'],
-                    $imagePath,
-                    $data['sort_order'],
-                    $data['is_active'],
-                    $id,
-                ]);
+                        $stmt->execute([
+                            $data['slug'],
+                            $data['name_sq'],
+                            $data['name_en'],
+                            $data['icon'],
+                            $imagePath,
+                            $data['sort_order'],
+                            $data['is_active'],
+                            $id,
+                        ]);
+                    }
+                );
 
                 redirect('/tadeo-admin/categories.php?msg=Kategoria u përditësua');
             } catch (Throwable $e) {

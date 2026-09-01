@@ -76,8 +76,19 @@ function ensure_safe_upload_dir(string $dir): void
     $htaccess = $dir . '/.htaccess';
 
     if (!file_exists($htaccess)) {
-        file_put_contents($htaccess, "Options -Indexes\n<FilesMatch \"\\.(php|phtml|phar)$\">\nRequire all denied\n</FilesMatch>\n");
-        chmod($htaccess, 0644);
+        $contents = "Options -Indexes\n"
+            . "<FilesMatch \"\\.(php|phtml|phar)$\">\n"
+            . "Require all denied\n"
+            . "</FilesMatch>\n"
+            . "<IfModule mod_headers.c>\n"
+            . "Header set Cache-Control \"no-cache, must-revalidate\"\n"
+            . "</IfModule>\n";
+
+        if (file_put_contents($htaccess, $contents, LOCK_EX) === false) {
+            throw new RuntimeException('Mbrojtja e folderit të imazheve nuk u shkrua dot.');
+        }
+
+        @chmod($htaccess, 0644);
     }
 }
 
@@ -295,7 +306,7 @@ function upload_optimize_to_webp(
     }
 }
 
-function handle_image_upload(
+function prepare_image_upload(
     string $fieldName,
     string $baseName,
     string $targetDir,
@@ -303,15 +314,26 @@ function handle_image_upload(
     int $maxBytes,
     ?string $currentPath = null,
     bool $isProduct = false
-): ?string {
+): array {
+    $normalizedCurrentPath = $currentPath !== null ? ltrim((string)$currentPath, '/') : null;
+    $plan = [
+        'has_upload' => false,
+        'public_path' => $normalizedCurrentPath,
+        'current_path' => $normalizedCurrentPath,
+        'target_path' => null,
+        'staged_path' => null,
+        'backup_path' => null,
+        'activated' => false,
+    ];
+
     if (!isset($_FILES[$fieldName]) || !is_array($_FILES[$fieldName])) {
-        return $currentPath;
+        return $plan;
     }
 
     $file = $_FILES[$fieldName];
 
     if (($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
-        return $currentPath;
+        return $plan;
     }
 
     if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
@@ -342,16 +364,216 @@ function handle_image_upload(
     $filename = $slug . '.webp';
     $target = $targetDir . '/' . $filename;
     $publicPath = $publicPathResolver($filename);
-    $currentPath = $currentPath !== null ? ltrim((string)$currentPath, '/') : null;
 
-    if (file_exists($target) && $currentPath !== $publicPath) {
+    if (file_exists($target) && $normalizedCurrentPath !== $publicPath) {
         throw new RuntimeException('Ekziston tashmë një imazh me këtë emër. Fshi imazhin e palidhur ose ndrysho emrin përpara ngarkimit.');
     }
 
-    upload_optimize_to_webp($tmpName, $mime, $target, $isProduct);
-    chmod($target, 0644);
+    $stagedPath = $targetDir . '/.upload-' . bin2hex(random_bytes(12)) . '.webp';
 
-    return $publicPath;
+    try {
+        upload_optimize_to_webp($tmpName, $mime, $stagedPath, $isProduct);
+        @chmod($stagedPath, 0644);
+    } catch (Throwable $e) {
+        @unlink($stagedPath);
+        throw $e;
+    }
+
+    $plan['has_upload'] = true;
+    $plan['public_path'] = $publicPath;
+    $plan['target_path'] = $target;
+    $plan['staged_path'] = $stagedPath;
+
+    return $plan;
+}
+
+function image_upload_activate(array &$plan): void
+{
+    if (empty($plan['has_upload'])) {
+        return;
+    }
+
+    $target = (string)$plan['target_path'];
+    $staged = (string)$plan['staged_path'];
+
+    if (!is_file($staged)) {
+        throw new RuntimeException('Imazhi i përgatitur për upload mungon.');
+    }
+
+    if (is_file($target)) {
+        $backup = $target . '.backup-' . bin2hex(random_bytes(8));
+        if (!@rename($target, $backup)) {
+            throw new RuntimeException('Imazhi aktual nuk u përgatit dot për zëvendësim të sigurt.');
+        }
+        $plan['backup_path'] = $backup;
+    }
+
+    if (!@rename($staged, $target)) {
+        if (!empty($plan['backup_path']) && is_file((string)$plan['backup_path'])) {
+            @rename((string)$plan['backup_path'], $target);
+            $plan['backup_path'] = null;
+        }
+        throw new RuntimeException('Imazhi i ri nuk u aktivizua dot.');
+    }
+
+    $plan['staged_path'] = null;
+    $plan['activated'] = true;
+    @chmod($target, 0644);
+}
+
+function image_upload_rollback(array $plan): void
+{
+    $target = (string)($plan['target_path'] ?? '');
+    $staged = (string)($plan['staged_path'] ?? '');
+    $backup = (string)($plan['backup_path'] ?? '');
+
+    if (!empty($plan['activated']) && $target !== '' && is_file($target)) {
+        @unlink($target);
+    }
+
+    if ($backup !== '' && is_file($backup) && $target !== '') {
+        @rename($backup, $target);
+    }
+
+    if ($staged !== '' && is_file($staged)) {
+        @unlink($staged);
+    }
+}
+
+function image_upload_finish(array $plan): void
+{
+    $backup = (string)($plan['backup_path'] ?? '');
+    $staged = (string)($plan['staged_path'] ?? '');
+
+    if ($backup !== '' && is_file($backup)) {
+        @unlink($backup);
+    }
+
+    if ($staged !== '' && is_file($staged)) {
+        @unlink($staged);
+    }
+}
+
+function image_upload_cleanup_previous_path(PDO $pdo, array $plan): void
+{
+    if (empty($plan['has_upload'])) {
+        return;
+    }
+
+    $oldPath = ltrim((string)($plan['current_path'] ?? ''), '/');
+    $newPath = ltrim((string)($plan['public_path'] ?? ''), '/');
+
+    if ($oldPath === '' || $oldPath === $newPath || str_contains($oldPath, '..') || str_contains($oldPath, "\0")) {
+        return;
+    }
+
+    if (!str_starts_with($oldPath, 'uploads/products/') && !str_starts_with($oldPath, 'uploads/categories/')) {
+        return;
+    }
+
+    try {
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM products WHERE image_path = ?');
+        $stmt->execute([$oldPath]);
+        $references = (int)$stmt->fetchColumn();
+
+        $columnStmt = $pdo->prepare(
+            "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'categories'
+               AND COLUMN_NAME = 'icon_image_path'"
+        );
+        $columnStmt->execute();
+
+        if ((int)$columnStmt->fetchColumn() > 0) {
+            $stmt = $pdo->prepare('SELECT COUNT(*) FROM categories WHERE icon_image_path = ?');
+            $stmt->execute([$oldPath]);
+            $references += (int)$stmt->fetchColumn();
+        }
+
+        if ($references === 0) {
+            $absolute = dirname(__DIR__) . '/' . $oldPath;
+            if (is_file($absolute)) {
+                @unlink($absolute);
+            }
+        }
+    } catch (Throwable $e) {
+        // A stale previous image is safer than failing a successful DB update.
+    }
+}
+
+function run_prepared_image_upload_transaction(PDO $pdo, array $plan, callable $dbWrite): void
+{
+    try {
+        $pdo->beginTransaction();
+        $dbWrite($plan['public_path']);
+        image_upload_activate($plan);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        image_upload_rollback($plan);
+        throw $e;
+    }
+
+    image_upload_finish($plan);
+    image_upload_cleanup_previous_path($pdo, $plan);
+}
+
+function prepare_product_image_upload(string $fieldName, string $baseName, ?string $currentPath = null): array
+{
+    return prepare_image_upload(
+        $fieldName,
+        $baseName,
+        product_upload_dir(),
+        'public_product_upload_path',
+        PRODUCT_UPLOAD_MAX_BYTES,
+        $currentPath,
+        true
+    );
+}
+
+function prepare_category_icon_upload(string $fieldName, string $baseName, ?string $currentPath = null): array
+{
+    return prepare_image_upload(
+        $fieldName,
+        $baseName,
+        category_upload_dir(),
+        'public_category_upload_path',
+        CATEGORY_UPLOAD_MAX_BYTES,
+        $currentPath,
+        false
+    );
+}
+
+function handle_image_upload(
+    string $fieldName,
+    string $baseName,
+    string $targetDir,
+    callable $publicPathResolver,
+    int $maxBytes,
+    ?string $currentPath = null,
+    bool $isProduct = false
+): ?string {
+    $plan = prepare_image_upload(
+        $fieldName,
+        $baseName,
+        $targetDir,
+        $publicPathResolver,
+        $maxBytes,
+        $currentPath,
+        $isProduct
+    );
+
+    try {
+        image_upload_activate($plan);
+        image_upload_finish($plan);
+    } catch (Throwable $e) {
+        image_upload_rollback($plan);
+        throw $e;
+    }
+
+    return $plan['public_path'];
 }
 
 function handle_product_image_upload(string $fieldName, string $baseName, ?string $currentPath = null): ?string

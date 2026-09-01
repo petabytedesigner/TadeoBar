@@ -42,11 +42,23 @@ required_files=(
   "public/includes/security_guard.php"
   "public/includes/password_recovery.php"
   "public/includes/smtp_mailer.php"
+  "public/includes/upload.php"
   "public/tadeo-admin/login.php"
   "public/tadeo-admin/forgot-password.php"
   "public/tadeo-admin/verify-reset-code.php"
   "public/tadeo-admin/reset-password.php"
   "public/tadeo-admin/recovery-setup.php"
+  "public/tadeo-admin/product-create.php"
+  "public/tadeo-admin/product-edit.php"
+  "public/tadeo-admin/category-create.php"
+  "public/tadeo-admin/category-edit.php"
+  "public/assets/js/product-image-preview.js"
+  "public/assets/js/product-image-editor.js"
+  "public/assets/css/product-image-editor.css"
+  "public/assets/vendor/filerobot-image-editor/filerobot-image-editor.min.js"
+  "public/assets/vendor/filerobot-image-editor/LICENSE"
+  "public/assets/vendor/filerobot-image-editor/VERSION.txt"
+  "public/assets/vendor/filerobot-image-editor/SHA256SUMS"
   "database/schema.sql"
   "database/migrations/20260831-password-recovery.sql"
   "database/migrations/20260901-security-ip-guard.sql"
@@ -55,7 +67,7 @@ required_files=(
 for file in "${required_files[@]}"; do
   [ -f "$file" ] || fail "Required file missing: $file"
 done
-ok "Required application, security, and recovery files exist"
+ok "Required application, security, recovery, and image-editor files exist"
 
 grep -q 'Require all denied' public/includes/.htaccess \
   || fail "public/includes/.htaccess does not deny direct access"
@@ -77,6 +89,28 @@ grep -q 'sha256sum' scripts/deploy.sh \
   || fail "deploy.sh is not using SHA-256 content comparison"
 ok "Security, checksum deployment, and database recovery structure is present"
 
+editor_expected_hash='ff0d274db699974b2096786549a424473438a72971da416d54cd68c05cd282df'
+read -r editor_actual_hash _ < <(sha256sum public/assets/vendor/filerobot-image-editor/filerobot-image-editor.min.js)
+[ "$editor_actual_hash" = "$editor_expected_hash" ] \
+  || fail "Filerobot editor bundle SHA-256 does not match the pinned v4.9.1 build"
+grep -q '^Upstream tag: v4\.9\.1$' public/assets/vendor/filerobot-image-editor/VERSION.txt \
+  || fail "Filerobot VERSION.txt is not pinned to upstream tag v4.9.1"
+grep -q "$editor_expected_hash" public/assets/vendor/filerobot-image-editor/SHA256SUMS \
+  || fail "Filerobot SHA256SUMS is missing the pinned bundle hash"
+grep -q '/assets/vendor/filerobot-image-editor/filerobot-image-editor.min.js?v=4.9.1' public/tadeo-admin/product-create.php \
+  || fail "Product create does not load the pinned local image editor"
+grep -q '/assets/vendor/filerobot-image-editor/filerobot-image-editor.min.js?v=4.9.1' public/tadeo-admin/product-edit.php \
+  || fail "Product edit does not load the pinned local image editor"
+for transactional_form in \
+  public/tadeo-admin/product-create.php \
+  public/tadeo-admin/product-edit.php \
+  public/tadeo-admin/category-create.php \
+  public/tadeo-admin/category-edit.php; do
+  grep -q 'run_prepared_image_upload_transaction' "$transactional_form" \
+    || fail "$transactional_form is not using staged image/database transaction handling"
+done
+ok "Pinned local image editor and transactional image integration passed"
+
 php_files_checked=0
 while IFS= read -r -d '' file; do
   php -l "$file" >/dev/null || fail "PHP syntax error: $file"
@@ -85,7 +119,8 @@ done < <(find public -type f -name '*.php' ! -name 'config.local.php' ! -name 'r
 ok "PHP syntax passed for ${php_files_checked} tracked application files"
 
 bash -n scripts/deploy.sh || fail "Shell syntax error: scripts/deploy.sh"
-ok "Deploy script shell syntax passed"
+bash -n scripts/preflight.sh || fail "Shell syntax error: scripts/preflight.sh"
+ok "Deploy and preflight shell syntax passed"
 
 if [ -d .git ] && command -v git >/dev/null 2>&1; then
   git check-ignore -q .env || fail ".env is not ignored by Git"
