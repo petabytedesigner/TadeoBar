@@ -2,3 +2,6 @@ Options -Indexes
 <FilesMatch "\.(php|phtml|phar)$">
 Require all denied
 </FilesMatch>
+<IfModule mod_headers.c>
+Header set Cache-Control "no-cache, must-revalidate"
+</IfModule>
