@@ -1,0 +1,30 @@
+name: Checksum Deploy Check
+
+on:
+  push:
+    paths:
+      - '.github/workflows/deploy-checksum-check.yml'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell syntax
+        run: |
+          bash -n scripts/deploy.sh
+          bash -n scripts/preflight.sh
+      - name: Validate checksum deploy invariants
+        run: |
+          grep -q 'sha256sum' scripts/deploy.sh
+          grep -q 'set ftp:list-options -a' scripts/deploy.sh
+          grep -q 'SAME:' scripts/deploy.sh
+          grep -q 'UPLOAD:' scripts/deploy.sh
+          grep -q 'DELETE:' scripts/deploy.sh
+          grep -q 'includes/config.local.php' scripts/deploy.sh
+          grep -q 'includes/recovery.local.php' scripts/deploy.sh
+          grep -q 'uploads/.trash-cleanup-last-run' scripts/deploy.sh
+          grep -q 'assets/images/categories/all.webp' scripts/deploy.sh
+          ! grep -q -- '--transfer-all' scripts/deploy.sh
+          ! grep -q 'mirror -R' scripts/deploy.sh
+          grep -q 'Verifying uploaded files by SHA-256' scripts/deploy.sh
