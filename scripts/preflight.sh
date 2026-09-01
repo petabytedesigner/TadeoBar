@@ -102,7 +102,15 @@ grep -Fq 'lftp -u "$FTP_USER","$FTP_PASS" "$FTP_HOST" < "$VERIFY_SCRIPT"' script
 if grep -Fq ' -f "$SYNC_SCRIPT"' scripts/deploy.sh || grep -Fq ' -f "$VERIFY_SCRIPT"' scripts/deploy.sh; then
   fail "deploy.sh still contains unsupported lftp -f script execution"
 fi
-ok "Security, checksum deployment, database recovery, and Termux lftp execution are present"
+grep -Fq 'declare -A REMOTE_DIRS=()' scripts/deploy.sh \
+  || fail "deploy.sh is not tracking directories present in the live snapshot"
+grep -Fq 'ensure_sync_remote_dir()' scripts/deploy.sh \
+  || fail "deploy.sh is missing safe remote-directory preparation"
+grep -Fq 'SYNC_DIRS_READY["$rel_dir"]=1' scripts/deploy.sh \
+  || fail "deploy.sh is not de-duplicating remote directory creation"
+grep -Fq 'set cmd:fail-exit no' scripts/deploy.sh \
+  || fail "deploy.sh does not tolerate FTP 550 only during best-effort directory creation"
+ok "Security, checksum deployment, database recovery, and Termux/InfinityFree FTP handling are present"
 
 grep -q 'trash_menu_number' database/schema.sql \
   || fail "database/schema.sql is missing trash-safe menu numbering"
