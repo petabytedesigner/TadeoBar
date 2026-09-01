@@ -118,7 +118,6 @@ function trash_cleanup_products(PDO $pdo): int
             continue;
         }
 
-        $imagePath = trash_cleanup_safe_product_image($row['image_path'] ?? null);
         $imageAbsolute = '';
         $quarantinePath = '';
         $quarantined = false;
@@ -205,9 +204,10 @@ function trash_cleanup_images(PDO $pdo): int
     }
 
     $rows = $pdo->query(
-        "SELECT id, trash_path
+        "SELECT id
          FROM image_trash
-         WHERE deleted_at < DATE_SUB(NOW(), INTERVAL 30 DAY)"
+         WHERE deleted_at < DATE_SUB(NOW(), INTERVAL 30 DAY)
+         ORDER BY id"
     )->fetchAll();
 
     if ($rows === []) {
@@ -218,33 +218,108 @@ function trash_cleanup_images(PDO $pdo): int
     $deleted = 0;
     $hadFailure = false;
 
-    foreach ($rows as $row) {
-        $id = (int)$row['id'];
-        $trashPath = ltrim((string)$row['trash_path'], '/');
-
-        if (
-            $id <= 0 ||
-            $trashPath === '' ||
-            str_contains($trashPath, '..') ||
-            str_contains($trashPath, "\0") ||
-            !str_starts_with($trashPath, 'uploads/trash/')
-        ) {
+    foreach ($rows as $candidate) {
+        $id = (int)$candidate['id'];
+        if ($id <= 0) {
             $hadFailure = true;
             continue;
         }
 
-        $absolutePath = $root . '/' . $trashPath;
-
-        if (is_file($absolutePath) && !@unlink($absolutePath)) {
-            $hadFailure = true;
-            continue;
-        }
+        $trashAbsolute = '';
+        $quarantinePath = '';
+        $quarantined = false;
+        $row = null;
 
         try {
-            $stmt = $pdo->prepare("DELETE FROM image_trash WHERE id = ?");
+            $pdo->beginTransaction();
+
+            $stmt = $pdo->prepare(
+                "SELECT *
+                 FROM image_trash
+                 WHERE id = ?
+                   AND deleted_at < DATE_SUB(NOW(), INTERVAL 30 DAY)
+                 LIMIT 1
+                 FOR UPDATE"
+            );
             $stmt->execute([$id]);
-            $deleted += $stmt->rowCount();
+            $row = $stmt->fetch();
+
+            if (!$row) {
+                $pdo->rollBack();
+                continue;
+            }
+
+            $trashPath = ltrim((string)$row['trash_path'], '/');
+
+            if (
+                $trashPath === '' ||
+                str_contains($trashPath, '..') ||
+                str_contains($trashPath, "\0") ||
+                !str_starts_with($trashPath, 'uploads/trash/')
+            ) {
+                throw new RuntimeException('Invalid image trash path.');
+            }
+
+            $trashAbsolute = $root . '/' . $trashPath;
+
+            if (is_file($trashAbsolute)) {
+                $quarantinePath = $trashAbsolute . '.cleanup-' . bin2hex(random_bytes(8));
+                if (!@rename($trashAbsolute, $quarantinePath)) {
+                    throw new RuntimeException('Image trash quarantine failed.');
+                }
+                $quarantined = true;
+            }
+
+            $delete = $pdo->prepare('DELETE FROM image_trash WHERE id = ?');
+            $delete->execute([$id]);
+
+            if ($delete->rowCount() !== 1) {
+                throw new RuntimeException('Image trash cleanup delete failed.');
+            }
+
+            $pdo->commit();
+            $deleted++;
+
+            if ($quarantined && is_file($quarantinePath) && !@unlink($quarantinePath)) {
+                if ($trashAbsolute !== '' && !is_file($trashAbsolute)) {
+                    @rename($quarantinePath, $trashAbsolute);
+                }
+
+                if ($row !== null && is_file($trashAbsolute)) {
+                    try {
+                        $restore = $pdo->prepare(
+                            "INSERT INTO image_trash
+                                (id, original_path, trash_path, owner_type, owner_id, menu_number, name_sq, name_en, deleted_at)
+                             VALUES
+                                (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                        );
+                        $restore->execute([
+                            (int)$row['id'],
+                            (string)$row['original_path'],
+                            (string)$row['trash_path'],
+                            $row['owner_type'],
+                            $row['owner_id'],
+                            $row['menu_number'],
+                            $row['name_sq'],
+                            $row['name_en'],
+                            (string)$row['deleted_at'],
+                        ]);
+                    } catch (Throwable $e) {
+                        // Keep the restored file; Menu Audit can surface it if DB compensation fails.
+                    }
+                }
+
+                $hadFailure = true;
+            }
         } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            if ($quarantined && $quarantinePath !== '' && is_file($quarantinePath) && $trashAbsolute !== '' && !is_file($trashAbsolute)) {
+                @rename($quarantinePath, $trashAbsolute);
+            }
+
             $hadFailure = true;
         }
     }
