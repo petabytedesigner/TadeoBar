@@ -41,27 +41,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Slug duhet të ketë vetëm shkronja të vogla, numra dhe minus.';
         } else {
             try {
-                $imagePath = handle_category_icon_upload(
+                $uploadPlan = prepare_category_icon_upload(
                     'icon_image_file',
                     $data['name_en'] !== '' ? $data['name_en'] : $data['name_sq']
                 );
 
-                $stmt = $pdo->prepare("
-                    INSERT INTO categories
-                        (slug, name_sq, name_en, icon, icon_image_path, sort_order, is_active)
-                    VALUES
-                        (?, ?, ?, ?, ?, ?, ?)
-                ");
+                run_prepared_image_upload_transaction(
+                    $pdo,
+                    $uploadPlan,
+                    function (?string $imagePath) use ($pdo, $data): void {
+                        $stmt = $pdo->prepare("
+                            INSERT INTO categories
+                                (slug, name_sq, name_en, icon, icon_image_path, sort_order, is_active)
+                            VALUES
+                                (?, ?, ?, ?, ?, ?, ?)
+                        ");
 
-                $stmt->execute([
-                    $data['slug'],
-                    $data['name_sq'],
-                    $data['name_en'],
-                    $data['icon'],
-                    $imagePath,
-                    $data['sort_order'],
-                    $data['is_active'],
-                ]);
+                        $stmt->execute([
+                            $data['slug'],
+                            $data['name_sq'],
+                            $data['name_en'],
+                            $data['icon'],
+                            $imagePath,
+                            $data['sort_order'],
+                            $data['is_active'],
+                        ]);
+                    }
+                );
 
                 redirect('/tadeo-admin/categories.php?msg=Kategoria u shtua');
             } catch (Throwable $e) {
