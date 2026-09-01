@@ -1,0 +1,503 @@
+(function () {
+    'use strict';
+
+    const MIN_WIDTH = 600;
+    const MIN_HEIGHT = 1000;
+    const RATIO_MIN = 0.55;
+    const RATIO_MAX = 0.82;
+    const SOURCE_MAX_BYTES = 10485760;
+    const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
+
+    function getSelectedMode(radios) {
+        const selected = Array.from(radios).find(function (radio) {
+            return radio.checked;
+        });
+        return selected ? selected.value : 'auto';
+    }
+
+    function setSelectedMode(radios, mode) {
+        radios.forEach(function (radio) {
+            radio.checked = radio.value === mode;
+        });
+    }
+
+    function fileFromSavedImage(savedImage) {
+        const mimeType = savedImage.mimeType || 'image/webp';
+        const extension = (savedImage.extension || mimeType.split('/')[1] || 'webp').replace('jpeg', 'jpg');
+        const fileName = 'bar-tadeo-edited-' + Date.now() + '.' + extension;
+
+        if (savedImage.imageBase64) {
+            const parts = savedImage.imageBase64.split(',');
+            if (parts.length !== 2) {
+                return Promise.reject(new Error('Editor-i nuk ktheu një imazh të vlefshëm.'));
+            }
+
+            const binary = atob(parts[1]);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i += 1) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+
+            return Promise.resolve(new File([bytes], fileName, {
+                type: mimeType,
+                lastModified: Date.now(),
+            }));
+        }
+
+        if (savedImage.imageCanvas && typeof savedImage.imageCanvas.toBlob === 'function') {
+            return new Promise(function (resolve, reject) {
+                savedImage.imageCanvas.toBlob(function (blob) {
+                    if (!blob) {
+                        reject(new Error('Editor-i nuk arriti të krijojë imazhin final.'));
+                        return;
+                    }
+
+                    resolve(new File([blob], fileName, {
+                        type: blob.type || mimeType,
+                        lastModified: Date.now(),
+                    }));
+                }, mimeType, typeof savedImage.quality === 'number' ? savedImage.quality : 0.92);
+            });
+        }
+
+        return Promise.reject(new Error('Editor-i nuk ktheu të dhëna për imazhin final.'));
+    }
+
+    function replaceInputFile(input, file) {
+        if (typeof DataTransfer !== 'function') {
+            throw new Error('Browser-i nuk mbështet zëvendësimin e sigurt të file-it pas editimit.');
+        }
+
+        const transfer = new DataTransfer();
+        transfer.items.add(file);
+        input.files = transfer.files;
+    }
+
+    function validateSourceFile(file) {
+        if (!file) {
+            return 'Zgjidh fillimisht një imazh.';
+        }
+        if (file.type && !ALLOWED_MIMES.includes(file.type)) {
+            return 'Lejohen vetëm JPG, PNG ose WEBP.';
+        }
+        if (file.size <= 0 || file.size > SOURCE_MAX_BYTES) {
+            return 'Imazhi burim duhet të jetë maksimumi 10 MB.';
+        }
+        return '';
+    }
+
+    function validateEditedResult(savedImage) {
+        const width = Number(savedImage.width || (savedImage.imageCanvas && savedImage.imageCanvas.width) || 0);
+        const height = Number(savedImage.height || (savedImage.imageCanvas && savedImage.imageCanvas.height) || 0);
+
+        if (!width || !height) {
+            return 'Dimensionet e rezultatit final nuk u lexuan dot.';
+        }
+
+        if (width < MIN_WIDTH || height < MIN_HEIGHT) {
+            return 'Rezultati final duhet të jetë të paktën 600×1000 px.';
+        }
+
+        const ratio = width / height;
+        if (ratio < RATIO_MIN || ratio > RATIO_MAX) {
+            return 'Rezultati final duhet të jetë portrait me raport W/H 0.55–0.82. Zgjidh 9:16, 2:3, 3:4 ose 4:5 te Crop.';
+        }
+
+        return '';
+    }
+
+    function buildTranslations() {
+        return {
+            name: 'Emri',
+            save: 'Apliko',
+            saveAs: 'Ruaj si',
+            back: 'Mbrapa',
+            loading: 'Duke ngarkuar…',
+            resetOperations: 'Rivendos të gjitha ndryshimet',
+            changesLoseWarningHint: 'Nëse e rivendos, të gjitha ndryshimet do të humbasin. Të vazhdojmë?',
+            discardChangesWarningHint: 'Nëse e mbyll editorin, ndryshimet e fundit nuk do të ruhen.',
+            cancel: 'Anulo',
+            apply: 'Apliko',
+            warning: 'Kujdes',
+            confirm: 'Konfirmo',
+            discardChanges: 'Hidh ndryshimet',
+            undoTitle: 'Zhbëj ndryshimin e fundit',
+            redoTitle: 'Ribëj ndryshimin',
+            showImageTitle: 'Shfaq imazhin origjinal',
+            zoomInTitle: 'Zmadho',
+            zoomOutTitle: 'Zvogëlo',
+            toggleZoomMenuTitle: 'Kontrollet e zmadhimit',
+            adjustTab: 'Rregullo',
+            finetuneTab: 'Përmirëso',
+            filtersTab: 'Filtra',
+            watermarkTab: 'Watermark',
+            annotateTabLabel: 'Shënime',
+            resize: 'Përmasa',
+            resizeTab: 'Përmasa',
+            imageName: 'Emri i imazhit',
+            invalidImageError: 'Imazhi nuk është i vlefshëm.',
+            uploadImageError: 'Gabim gjatë ngarkimit të imazhit.',
+            cropTool: 'Prerje',
+            original: 'Origjinal',
+            custom: 'E personalizuar',
+            square: 'Katror',
+            landscape: 'Landscape',
+            portrait: 'Portrait',
+            ellipse: 'Elips',
+            arrowTool: 'Shigjetë',
+            blurTool: 'Mjegullim',
+            brightnessTool: 'Ndriçim',
+            contrastTool: 'Kontrast',
+            unFlipX: 'Hiq kthimin horizontal',
+            flipX: 'Kthe horizontalisht',
+            unFlipY: 'Hiq kthimin vertikal',
+            flipY: 'Kthe vertikalisht',
+            hsvTool: 'Ngjyrat',
+            hue: 'Toni',
+            brightness: 'Ndriçim',
+            saturation: 'Saturim',
+            value: 'Vlera',
+            importing: 'Duke importuar…',
+            addImage: '+ Shto imazh',
+            uploadImage: 'Ngarko imazh',
+            fromGallery: 'Nga galeria',
+            penTool: 'Laps',
+            polygonTool: 'Poligon',
+            rectangleTool: 'Drejtkëndësh',
+            resizeWidthTitle: 'Gjerësia në pixel',
+            resizeHeightTitle: 'Lartësia në pixel',
+            toggleRatioLockTitle: 'Kyç/çkyç raportin',
+            resetSize: 'Rikthe përmasat origjinale',
+            rotateTool: 'Rrotullo',
+            textTool: 'Tekst',
+            fontFamily: 'Fonti',
+            size: 'Madhësia',
+            letterSpacing: 'Hapësira mes shkronjave',
+            lineHeight: 'Lartësia e rreshtit',
+            warmthTool: 'Ngrohtësi',
+            addWatermark: '+ Shto watermark',
+            addTextWatermark: '+ Shto watermark me tekst',
+            uploadWatermark: 'Ngarko watermark',
+            addWatermarkAsText: 'Shto si tekst',
+            opacity: 'Opaciteti',
+            transparency: 'Transparenca',
+            position: 'Pozicioni',
+            saveAsModalTitle: 'Apliko imazhin',
+            extension: 'Prapashtesa',
+            format: 'Formati',
+            nameIsRequired: 'Emri është i detyrueshëm.',
+            quality: 'Cilësia',
+            width: 'Gjerësia',
+            height: 'Lartësia',
+            actualSize: 'Madhësia reale (100%)',
+            fitSize: 'Përshtat në ekran',
+            download: 'Shkarko',
+            barTadeo916: '9:16',
+            barTadeo23: '2:3',
+            barTadeo34: '3:4',
+            barTadeo45: '4:5',
+        };
+    }
+
+    document.querySelectorAll('[data-product-image-editor-root]').forEach(function (root) {
+        const input = root.querySelector('[data-product-image-input]');
+        const radios = root.querySelectorAll('[data-image-mode]');
+        const editNowButton = root.querySelector('[data-edit-now]');
+        const openEditorButton = root.querySelector('[data-open-image-editor]');
+        const editorActions = root.querySelector('[data-editor-actions]');
+        const notice = root.querySelector('[data-editor-notice]');
+        const shell = document.querySelector('[data-product-image-editor-shell]');
+        const editorContainer = shell ? shell.querySelector('[data-product-image-editor-container]') : null;
+        const editorWarning = shell ? shell.querySelector('[data-product-image-editor-warning]') : null;
+        const existingImage = root.getAttribute('data-existing-image') || '';
+        const form = root.closest('form');
+
+        if (!input || !radios.length || !shell || !editorContainer) {
+            return;
+        }
+
+        let originalSelectedFile = null;
+        let editorInstance = null;
+        let editorObjectUrl = '';
+        let hasAppliedEdit = false;
+        let suppressInputEditor = false;
+        let warningTimer = 0;
+
+        function setNotice(message, type) {
+            if (!notice) {
+                return;
+            }
+            notice.hidden = !message;
+            notice.className = 'product-image-editor-notice' + (type ? ' is-' + type : '');
+            notice.textContent = message || '';
+        }
+
+        function showEditorWarning(message) {
+            if (!editorWarning) {
+                return;
+            }
+            window.clearTimeout(warningTimer);
+            editorWarning.textContent = message;
+            editorWarning.hidden = false;
+            warningTimer = window.setTimeout(function () {
+                editorWarning.hidden = true;
+            }, 6500);
+        }
+
+        function currentFile() {
+            return input.files && input.files[0] ? input.files[0] : null;
+        }
+
+        function syncModeUi() {
+            const mode = getSelectedMode(radios);
+            if (editorActions) {
+                editorActions.hidden = mode !== 'edit' || (!currentFile() && !existingImage);
+            }
+            if (editNowButton && mode !== 'auto') {
+                editNowButton.hidden = true;
+            }
+            setNotice('', '');
+        }
+
+        function closeEditor() {
+            if (editorInstance) {
+                try {
+                    editorInstance.terminate();
+                } catch (error) {
+                    // The editor may already be terminated by its own close flow.
+                }
+                editorInstance = null;
+            }
+
+            if (editorObjectUrl) {
+                URL.revokeObjectURL(editorObjectUrl);
+                editorObjectUrl = '';
+            }
+
+            editorContainer.innerHTML = '';
+            shell.hidden = true;
+            shell.classList.remove('is-open');
+            document.body.classList.remove('product-image-editor-open');
+            if (editorWarning) {
+                editorWarning.hidden = true;
+            }
+        }
+
+        function applyEditedImage(savedImage) {
+            const validationError = validateEditedResult(savedImage);
+            if (validationError) {
+                showEditorWarning(validationError);
+                return;
+            }
+
+            fileFromSavedImage(savedImage).then(function (file) {
+                if (file.size > SOURCE_MAX_BYTES) {
+                    showEditorWarning('Rezultati i editorit kalon 10 MB. Ule cilësinë ose përmasat dhe provo përsëri.');
+                    return;
+                }
+
+                replaceInputFile(input, file);
+                hasAppliedEdit = true;
+                suppressInputEditor = true;
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+                suppressInputEditor = false;
+                setNotice('Editimi u aplikua. Ky është imazhi që do të dërgohet kur ruan produktin.', 'ok');
+                closeEditor();
+                syncModeUi();
+            }).catch(function (error) {
+                showEditorWarning(error && error.message ? error.message : 'Imazhi i edituar nuk u përgatit dot.');
+            });
+        }
+
+        function openEditor(source) {
+            if (!window.FilerobotImageEditor) {
+                setNotice('Editor-i i imazhit nuk u ngarkua. Rifresko faqen dhe provo përsëri.', 'error');
+                return;
+            }
+
+            let editorSource = source;
+            if (source instanceof File) {
+                const sourceError = validateSourceFile(source);
+                if (sourceError) {
+                    setNotice(sourceError, 'error');
+                    return;
+                }
+                editorObjectUrl = URL.createObjectURL(source);
+                editorSource = editorObjectUrl;
+            }
+
+            closeEditor();
+
+            if (source instanceof File) {
+                editorObjectUrl = URL.createObjectURL(source);
+                editorSource = editorObjectUrl;
+            }
+
+            shell.hidden = false;
+            shell.classList.add('is-open');
+            document.body.classList.add('product-image-editor-open');
+
+            const FIE = window.FilerobotImageEditor;
+            const TABS = FIE.TABS;
+            const TOOLS = FIE.TOOLS;
+            const baseName = source instanceof File && source.name
+                ? source.name.replace(/\.[^.]+$/, '')
+                : 'bar-tadeo-product';
+
+            const config = {
+                source: editorSource,
+                useBackendTranslations: false,
+                language: 'sq',
+                translations: buildTranslations(),
+                defaultSavedImageName: baseName,
+                defaultSavedImageType: 'webp',
+                defaultSavedImageQuality: 0.92,
+                closeAfterSave: false,
+                avoidChangesNotSavedAlertOnLeave: false,
+                tabsIds: [
+                    TABS.ADJUST,
+                    TABS.FINETUNE,
+                    TABS.FILTERS,
+                    TABS.RESIZE,
+                    TABS.ANNOTATE,
+                    TABS.WATERMARK,
+                ],
+                defaultTabId: TABS.ADJUST,
+                defaultToolId: TOOLS.CROP,
+                Crop: {
+                    presetsItems: [
+                        { titleKey: 'barTadeo916', descriptionKey: '9:16', ratio: 9 / 16 },
+                        { titleKey: 'barTadeo23', descriptionKey: '2:3', ratio: 2 / 3 },
+                        { titleKey: 'barTadeo34', descriptionKey: '3:4', ratio: 3 / 4 },
+                        { titleKey: 'barTadeo45', descriptionKey: '4:5', ratio: 4 / 5 },
+                    ],
+                },
+                Rotate: {
+                    angle: 90,
+                    componentType: 'slider',
+                },
+                annotationsCommon: {
+                    fill: '#d8b86a',
+                    stroke: '#d8b86a',
+                },
+                Text: {
+                    text: 'Bar Tadeo',
+                    fontFamily: 'Arial',
+                    fonts: ['Arial', 'Tahoma', 'Sans-serif'],
+                },
+                theme: {
+                    palette: {
+                        'bg-secondary': '#111214',
+                        'bg-primary': '#191b1f',
+                        'bg-primary-active': '#25282e',
+                        'accent-primary': '#d8b86a',
+                        'accent-primary-active': '#e8cb82',
+                        'icons-primary': '#f4f1e8',
+                        'icons-secondary': '#c3beb0',
+                        'borders-secondary': '#2d3036',
+                        'borders-primary': '#41454d',
+                        'borders-strong': '#d8b86a',
+                        'warning': '#e3a85a',
+                    },
+                    typography: {
+                        fontFamily: 'Arial, sans-serif',
+                    },
+                },
+                onSave: function (savedImage) {
+                    applyEditedImage(savedImage);
+                },
+            };
+
+            editorInstance = new FIE(editorContainer, config);
+            editorInstance.render({
+                onClose: function () {
+                    closeEditor();
+                },
+            });
+        }
+
+        radios.forEach(function (radio) {
+            radio.addEventListener('change', function () {
+                syncModeUi();
+                if (radio.checked && radio.value === 'edit') {
+                    const file = currentFile();
+                    if (file) {
+                        openEditor(file);
+                    }
+                }
+            });
+        });
+
+        input.addEventListener('change', function () {
+            const file = currentFile();
+            if (!file) {
+                originalSelectedFile = null;
+                hasAppliedEdit = false;
+                syncModeUi();
+                return;
+            }
+
+            if (!suppressInputEditor) {
+                originalSelectedFile = file;
+                hasAppliedEdit = false;
+            }
+
+            syncModeUi();
+
+            if (!suppressInputEditor && getSelectedMode(radios) === 'edit') {
+                openEditor(file);
+            }
+        });
+
+        input.addEventListener('product-image-validation', function (event) {
+            if (!editNowButton) {
+                return;
+            }
+
+            const detail = event.detail || {};
+            editNowButton.hidden = !(getSelectedMode(radios) === 'auto' && detail.ratioInvalid === true && detail.canEdit === true);
+        });
+
+        if (editNowButton) {
+            editNowButton.addEventListener('click', function () {
+                const file = currentFile();
+                if (!file) {
+                    return;
+                }
+                setSelectedMode(radios, 'edit');
+                syncModeUi();
+                openEditor(file);
+            });
+        }
+
+        if (openEditorButton) {
+            openEditorButton.addEventListener('click', function () {
+                const file = currentFile();
+                if (file) {
+                    openEditor(file);
+                    return;
+                }
+                if (existingImage) {
+                    openEditor(existingImage);
+                }
+            });
+        }
+
+        if (form) {
+            form.addEventListener('submit', function (event) {
+                if (getSelectedMode(radios) !== 'edit') {
+                    return;
+                }
+
+                const file = currentFile();
+                if (file && !hasAppliedEdit && originalSelectedFile === file) {
+                    event.preventDefault();
+                    setNotice('Je në mënyrën EDITO. Hape editorin dhe shtyp Apliko para se të ruash produktin.', 'error');
+                    openEditor(file);
+                }
+            });
+        }
+
+        syncModeUi();
+    });
+}());
