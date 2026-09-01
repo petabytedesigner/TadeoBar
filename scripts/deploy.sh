@@ -13,11 +13,13 @@ set +a
 LOCAL_DIR="public"
 REMOTE_DIR="/htdocs"
 STATIC_ALL_LOCAL="public/assets/images/categories/all.webp"
-STATIC_ALL_REMOTE="/htdocs/assets/images/categories/all.webp"
-STATIC_ALL_TMP="/htdocs/assets/images/categories/.all-image-upload.tmp"
+STATIC_ALL_DIR="/htdocs/assets/images/categories"
+STATIC_ALL_REMOTE="all.webp"
+STATIC_ALL_TMP=".all-image-upload.tmp"
 
 echo "Deploying $LOCAL_DIR to $FTP_HOST:$REMOTE_DIR"
 echo "Preserving server DB/recovery config and uploaded images..."
+echo "Forcing a full transfer of all tracked deployable files..."
 
 lftp -u "$FTP_USER","$FTP_PASS" "$FTP_HOST" <<LFTP
 set cmd:fail-exit yes
@@ -25,7 +27,7 @@ set ftp:ssl-force true
 set ftp:ssl-protect-data true
 set ftp:passive-mode true
 set ssl:verify-certificate yes
-mirror -R --delete --verbose --no-perms \
+mirror -R --delete --transfer-all --verbose --no-perms \
   --exclude-glob includes/config.local.php \
   --exclude-glob includes/recovery.local.php \
   --exclude-glob assets/images/categories/all.webp \
@@ -47,9 +49,9 @@ mirror -R --delete --verbose --no-perms \
   --exclude-glob uploads/trash/categories/*.webp \
   "$LOCAL_DIR"/ "$REMOTE_DIR"/
 
-# InfinityFree FTP may reject direct STOR to a .webp filename. Upload this
-# tracked static asset under a neutral temporary name, then rename it.
-mkdir -p /htdocs/assets/images/categories
+# InfinityFree FTP may reject direct STOR to a .webp filename. The mirror above
+# creates this tracked directory, so enter it directly instead of mkdir-ing it.
+cd "$STATIC_ALL_DIR"
 rm -f "$STATIC_ALL_TMP"
 put "$STATIC_ALL_LOCAL" -o "$STATIC_ALL_TMP"
 rm -f "$STATIC_ALL_REMOTE"
