@@ -225,7 +225,9 @@ printf 'bye\n' >> "$SYNC_SCRIPT"
 
 echo
 echo "Applying checksum plan..."
-lftp -u "$FTP_USER","$FTP_PASS" "$FTP_HOST" -f "$SYNC_SCRIPT"
+# Feed commands through stdin for compatibility with Termux lftp builds that
+# do not expose the desktop-style -f script-file option.
+lftp -u "$FTP_USER","$FTP_PASS" "$FTP_HOST" < "$SYNC_SCRIPT"
 
 if (( upload_count > 0 )); then
   write_lftp_settings > "$VERIFY_SCRIPT"
@@ -242,7 +244,7 @@ if (( upload_count > 0 )); then
   printf 'bye\n' >> "$VERIFY_SCRIPT"
 
   echo "Verifying uploaded files by SHA-256..."
-  lftp -u "$FTP_USER","$FTP_PASS" "$FTP_HOST" -f "$VERIFY_SCRIPT"
+  lftp -u "$FTP_USER","$FTP_PASS" "$FTP_HOST" < "$VERIFY_SCRIPT"
 
   while IFS= read -r -d '' rel; do
     local_hash="$(file_sha256 "$LOCAL_DIR/$rel")"

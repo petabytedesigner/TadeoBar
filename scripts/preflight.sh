@@ -95,7 +95,14 @@ grep -q 'SITE_IP_GUARD_BLOCK_HOURS = 24' public/includes/security_guard.php \
   || fail "IP guard block duration is not configured as expected"
 grep -q 'sha256sum' scripts/deploy.sh \
   || fail "deploy.sh is not using SHA-256 content comparison"
-ok "Security, checksum deployment, and database recovery structure is present"
+grep -Fq 'lftp -u "$FTP_USER","$FTP_PASS" "$FTP_HOST" < "$SYNC_SCRIPT"' scripts/deploy.sh \
+  || fail "deploy.sh is not using Termux-compatible stdin execution for sync"
+grep -Fq 'lftp -u "$FTP_USER","$FTP_PASS" "$FTP_HOST" < "$VERIFY_SCRIPT"' scripts/deploy.sh \
+  || fail "deploy.sh is not using Termux-compatible stdin execution for verification"
+if grep -Fq ' -f "$SYNC_SCRIPT"' scripts/deploy.sh || grep -Fq ' -f "$VERIFY_SCRIPT"' scripts/deploy.sh; then
+  fail "deploy.sh still contains unsupported lftp -f script execution"
+fi
+ok "Security, checksum deployment, database recovery, and Termux lftp execution are present"
 
 grep -q 'trash_menu_number' database/schema.sql \
   || fail "database/schema.sql is missing trash-safe menu numbering"
