@@ -2,6 +2,7 @@
 *.log
 .DS_Store
 Thumbs.db
+.deploy-audit/
 public/includes/config.local.php
 public/includes/recovery.local.php
 public/db-test.php
