@@ -3,22 +3,12 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/csrf.php';
+require_once __DIR__ . '/../includes/product_ordering.php';
 require_once __DIR__ . '/../includes/admin_header.php';
 
 $admin = require_admin();
 $pdo = db();
-
-function ensure_product_trash_column(PDO $pdo): void
-{
-    $stmt = $pdo->query("SHOW COLUMNS FROM products LIKE 'deleted_at'");
-    $exists = $stmt !== false && $stmt->fetch() !== false;
-
-    if (!$exists) {
-        $pdo->exec("ALTER TABLE products ADD COLUMN deleted_at TIMESTAMP NULL DEFAULT NULL AFTER updated_at");
-    }
-}
-
-ensure_product_trash_column($pdo);
+ensure_product_ordering_schema($pdo);
 
 $q = trim((string)($_GET['q'] ?? ''));
 $categoryId = (int)($_GET['category_id'] ?? 0);
