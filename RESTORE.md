@@ -18,7 +18,7 @@ Elementet private nuk duhet të ruhen në GitHub:
 - password-e admin ose password hash-e reale nga instalimi live
 - password-i real i WiFi
 
-`.gitignore` i projektit i përjashton `.env`, `config.local.php` dhe `recovery.local.php`.
+`.gitignore` i projektit i përjashton `.env`, `config.local.php`, `recovery.local.php` dhe artifact-et lokale `.deploy-audit/`.
 
 ## 2. Kërkesat
 
@@ -95,7 +95,7 @@ Full DB backup duhet të rikthejë këto tabela:
 - `image_trash`
 - `image_detach_history`
 
-Pas importit mund të ekzekutosh `database/schema.sql`; ai është ndërtuar të krijojë strukturat që mungojnë dhe të shtojë kolonat e njohura të runtime-it kur mungojnë.
+Pas importit mund të ekzekutosh `database/schema.sql`; ai është ndërtuar të krijojë strukturat që mungojnë, të shtojë kolonat e njohura të runtime-it dhe të normalizojë produktet jashtë koshit në numërim strikt `1..N`.
 
 `security_ip_guard` përmban vetëm hash-e të IP-ve dhe state të përkohshëm të mbrojtjes; nuk përmban IP raw.
 
@@ -114,6 +114,23 @@ Për brute-force/IP guard ekziston migration-i:
 ```text
 database/migrations/20260901-security-ip-guard.sql
 ```
+
+Për numërimin strikt të produkteve dhe sjelljen trash-safe ekziston migration-i idempotent:
+
+```text
+database/migrations/20260901-product-menu-ordering.sql
+```
+
+Ky migration:
+
+- siguron `deleted_at` në instalime të vjetra;
+- shton `trash_menu_number`;
+- lejon `menu_number = NULL` vetëm për produktet në kosh;
+- ruan numrin e vjetër të produkteve në kosh;
+- liron numrat e tyre;
+- normalizon produktet jashtë koshit në `1..N` duke ruajtur rendin ekzistues.
+
+Admin Products përdor edhe `public/includes/product_ordering.php`, i cili verifikon/upgrade-on kolonat e nevojshme dhe vetë-rregullon një instalim legacy para mutimeve të produkteve.
 
 Guard-i gjithashtu krijon automatikisht `security_ip_guard` në runtime nëse tabela mungon, ndërsa `recovery-setup.php` krijon automatikisht `password_reset_codes` nëse ajo mungon.
 
@@ -197,7 +214,7 @@ Mbrojtjet përfshijnë CSRF, rate limiting, maksimum 5 tentativa për kod, singl
 Login-i ka dy nivele mbrojtjeje server-side:
 
 - 5 tentativa të dështuara për të njëjtin username + IP brenda 10 minutave aktivizojnë soft guard-in ekzistues;
-- tentativa e dështuar vazhdon të regjistrohet edhe gjatë soft guard-it;
+- tentativa me kredenciale të pavlefshme vazhdon të regjistrohet edhe gjatë soft guard-it, ndërsa kredencialet korrekte nuk rrisin hard counter-in;
 - 15 login-e të dështuara nga e njëjta IP brenda dritares 24-orëshe aktivizojnë hard block 24 orë;
 - counter-i i hard guard është IP-only, pra ndryshimi i username-it nuk e anashkalon;
 - login i suksesshëm reseton counter-in e hard guard;
@@ -248,14 +265,16 @@ Pas restore kontrollo `/htdocs/.htaccess` dhe `/htdocs/includes/.htaccess`. Dosj
 4. Kontrollo WiFi section dhe QR.
 5. Hyr te `/tadeo-admin/`.
 6. Kontrollo dashboard, Products, Categories, Images, WiFi, Analytics dhe Settings.
-7. Ekzekuto Recovery Setup dhe konfirmo që të dy email-et test mbërrijnë.
-8. Testo Forgot Password dhe konfirmo të njëjtin kod në të dy recovery email-et.
-9. Testo kod të gabuar, skadimin dhe ndryshimin e password-it.
-10. Kontrollo protected recovery enable/disable.
-11. Verifiko IP guard me dy IP/network-e të ndryshme para se të bësh testin e plotë të 15 tentativave.
-12. Hap `menu-audit.php` dhe kontrollo problemet kritike.
-13. Testo error page dinamike.
-14. Testo upload-in vetëm kur ke backup.
+7. Në Products verifiko që numrat jashtë koshit janë strikt `1..N`.
+8. Testo një produkt prove: çoje në kosh dhe verifiko që numrat pas tij kompaktohen pa gap; riktheje dhe verifiko që futet përsëri në rend pa duplicate.
+9. Ekzekuto Recovery Setup dhe konfirmo që të dy email-et test mbërrijnë.
+10. Testo Forgot Password dhe konfirmo të njëjtin kod në të dy recovery email-et.
+11. Testo kod të gabuar, skadimin dhe ndryshimin e password-it.
+12. Kontrollo protected recovery enable/disable.
+13. Verifiko IP guard me dy IP/network-e të ndryshme para se të bësh testin e plotë të 15 tentativave.
+14. Hap `menu-audit.php` dhe kontrollo problemet kritike.
+15. Testo error page dinamike.
+16. Testo upload-in vetëm kur ke backup.
 
 ## 14. Cleanup
 
@@ -282,6 +301,8 @@ Restore konsiderohet i përfunduar vetëm kur:
 - menuja publike punon
 - admin login punon
 - databaza lidhet pa gabime
+- produktet jashtë koshit kanë numërim strikt `1..N`
+- trash/restore ruajnë invariantin e numërimit
 - imazhet shfaqen
 - Recovery Setup kalon testet
 - Forgot Password punon end-to-end
@@ -293,5 +314,5 @@ Kontrollo me:
 
 ```bash
 git status --short
-git check-ignore .env public/includes/config.local.php public/includes/recovery.local.php
+git check-ignore .env public/includes/config.local.php public/includes/recovery.local.php .deploy-audit/
 ```
