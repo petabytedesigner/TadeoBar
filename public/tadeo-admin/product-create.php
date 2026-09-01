@@ -4,10 +4,12 @@ declare(strict_types=1);
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/upload.php';
+require_once __DIR__ . '/../includes/product_ordering.php';
 require_once __DIR__ . '/../includes/admin_header.php';
 
 $admin = require_admin();
 $pdo = db();
+ensure_product_ordering_schema($pdo);
 
 $categories = $pdo->query("
     SELECT id, name_sq, name_en
@@ -16,7 +18,8 @@ $categories = $pdo->query("
     ORDER BY sort_order, id
 ")->fetchAll();
 
-$nextNumber = (int)$pdo->query("SELECT COALESCE(MAX(menu_number), 0) + 1 FROM products")->fetchColumn();
+$maxMenuPosition = product_ordering_live_count($pdo) + 1;
+$nextNumber = $maxMenuPosition;
 
 $error = '';
 
@@ -57,11 +60,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $pdo,
                     $uploadPlan,
                     function (?string $imagePath) use ($pdo, $data): void {
+                        product_ordering_prepare_insert($pdo, $data['menu_number']);
+
                         $stmt = $pdo->prepare("
                             INSERT INTO products
-                                (menu_number, category_id, name_sq, name_en, price_all, image_path, is_active, sort_order)
+                                (menu_number, trash_menu_number, category_id, name_sq, name_en, price_all, image_path, is_active, sort_order)
                             VALUES
-                                (?, ?, ?, ?, ?, ?, ?, ?)
+                                (?, NULL, ?, ?, ?, ?, ?, ?, ?)
                         ");
 
                         $stmt->execute([
@@ -112,7 +117,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="form-grid">
                     <div>
                         <label>Numri i produktit</label>
-                        <input name="menu_number" type="number" min="1" value="<?= e($data['menu_number']) ?>" required>
+                        <input name="menu_number" type="number" min="1" max="<?= e($maxMenuPosition) ?>" value="<?= e($data['menu_number']) ?>" required>
+                        <div class="help-text">Pozicioni duhet të jetë 1–<?= e($maxMenuPosition) ?>. Nëse zgjedh një pozicion ekzistues, produktet pas tij zhvendosen automatikisht që numërimi të mbetet strikt 1…N.</div>
                     </div>
 
                     <div>
