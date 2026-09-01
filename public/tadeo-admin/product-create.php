@@ -48,25 +48,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Plotëso saktë të gjitha fushat e detyrueshme.';
         } else {
             try {
-                $imagePath = handle_product_image_upload('image_file', $data['name_en'] !== '' ? $data['name_en'] : $data['name_sq']);
+                $uploadPlan = prepare_product_image_upload(
+                    'image_file',
+                    $data['name_en'] !== '' ? $data['name_en'] : $data['name_sq']
+                );
 
-                $stmt = $pdo->prepare("
-                    INSERT INTO products
-                        (menu_number, category_id, name_sq, name_en, price_all, image_path, is_active, sort_order)
-                    VALUES
-                        (?, ?, ?, ?, ?, ?, ?, ?)
-                ");
+                run_prepared_image_upload_transaction(
+                    $pdo,
+                    $uploadPlan,
+                    function (?string $imagePath) use ($pdo, $data): void {
+                        $stmt = $pdo->prepare("
+                            INSERT INTO products
+                                (menu_number, category_id, name_sq, name_en, price_all, image_path, is_active, sort_order)
+                            VALUES
+                                (?, ?, ?, ?, ?, ?, ?, ?)
+                        ");
 
-                $stmt->execute([
-                    $data['menu_number'],
-                    $data['category_id'],
-                    $data['name_sq'],
-                    $data['name_en'],
-                    $data['price_all'],
-                    $imagePath,
-                    $data['is_active'],
-                    $data['sort_order'],
-                ]);
+                        $stmt->execute([
+                            $data['menu_number'],
+                            $data['category_id'],
+                            $data['name_sq'],
+                            $data['name_en'],
+                            $data['price_all'],
+                            $imagePath,
+                            $data['is_active'],
+                            $data['sort_order'],
+                        ]);
+                    }
+                );
 
                 redirect('/tadeo-admin/products.php?msg=Produkti u shtua');
             } catch (Throwable $e) {
