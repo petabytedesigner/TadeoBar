@@ -49,7 +49,6 @@ required_files=(
   "public/tadeo-admin/forgot-password.php"
   "public/tadeo-admin/verify-reset-code.php"
   "public/tadeo-admin/reset-password.php"
-  "public/tadeo-admin/recovery-setup.php"
   "public/tadeo-admin/products.php"
   "public/tadeo-admin/product-create.php"
   "public/tadeo-admin/product-edit.php"
