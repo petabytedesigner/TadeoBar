@@ -149,7 +149,7 @@ $flash = (string)($_GET['msg'] ?? '');
 
             <p style="display:flex; gap:10px; flex-wrap:wrap">
                 <a class="btn" style="width:auto" href="/tadeo-admin/product-create.php">+ Shto produkt</a>
-                <a class="btn btn-secondary" style="width:auto" href="/tadeo-admin/product-trash.php">Produktet e fshira</a>
+                <a class="btn btn-secondary" style="width:auto" href="/tadeo-admin/product-trash.php">Koshi i produkteve</a>
             </p>
 
             <section class="product-grid">
