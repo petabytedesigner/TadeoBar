@@ -304,12 +304,18 @@ function password_reset_issue(PDO $pdo): int
         ]);
         $resetId = (int)$pdo->lastInsertId();
 
-        try {
-            foreach ($recipients as $recipient) {
+        $deliveredCount = 0;
+        foreach ($recipients as $recipient) {
+            try {
                 smtp_send_text_email($recipient, $subject, $body);
+                $deliveredCount++;
+            } catch (Throwable $e) {
+                // Continue: one verified recovery destination is enough to keep the code usable.
             }
-        } catch (Throwable $e) {
-            throw new RuntimeException('Kodi nuk u dërgua dot me email. Provo përsëri më vonë.', 0, $e);
+        }
+
+        if ($deliveredCount === 0) {
+            throw new RuntimeException('Kodi nuk u dërgua dot me email. Provo përsëri më vonë.');
         }
 
         $stmt = $pdo->prepare(
@@ -548,12 +554,17 @@ function recovery_email_change_begin(PDO $pdo, int $adminId, string $newEmail): 
     }
 
     $barName = site_bar_name();
-    smtp_send_text_email(
-        $newEmail,
-        $barName . ' - Verifiko email-in',
-        "Kodi 6-shifror për verifikimin e email-it të ri është:\n\n{$code}\n\n"
-        . 'Kodi skadon pas ' . RECOVERY_EMAIL_CODE_TTL_MINUTES . ' minutash.'
-    );
+
+    try {
+        smtp_send_text_email(
+            $newEmail,
+            $barName . ' - Verifiko email-in',
+            "Kodi 6-shifror për verifikimin e email-it të ri është:\n\n{$code}\n\n"
+            . 'Kodi skadon pas ' . RECOVERY_EMAIL_CODE_TTL_MINUTES . ' minutash.'
+        );
+    } catch (Throwable $e) {
+        throw new RuntimeException('Kodi i verifikimit nuk u dërgua dot. Kontrollo email-in dhe provo përsëri.', 0, $e);
+    }
 
     admin_session_start();
     $_SESSION['pending_recovery_email'] = $newEmail;
