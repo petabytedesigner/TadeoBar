@@ -23,8 +23,6 @@ $code = trim((string)($_POST['code'] ?? ''));
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_verify()) {
         $error = 'Kontrolli i sigurisë dështoi. Rifresko faqen dhe provo përsëri.';
-    } elseif (!preg_match('/^\d{6}$/', $code)) {
-        $error = 'Vendos kodin e plotë 6-shifror.';
     } else {
         try {
             password_reset_verify_code($pdo, $resetId, $code);
