@@ -177,7 +177,7 @@ $qrPayload = wifi_qr_payload_local($data['ssid'], $data['password'], $data['secu
         <main>
             <h1 class="admin-title">WiFi</h1>
             <p class="admin-muted">
-                Menaxho emrin dhe password-in e WiFi. QR krijohet automatikisht dhe ndryshon sa herë ndryshon WiFi.
+                Menaxho emrin dhe password-in e WiFi. Kodi QR përditësohet automatikisht sa herë ndryshojnë të dhënat e rrjetit.
             </p>
 
             <?php if ($flash !== ''): ?>
@@ -213,15 +213,15 @@ $qrPayload = wifi_qr_payload_local($data['ssid'], $data['password'], $data['secu
                         </div>
                     </div>
 
-                    <button type="submit">Ruaj WiFi dhe rifresko QR</button>
+                    <button type="submit">Ruaj WiFi dhe përditëso kodin QR</button>
                 </form>
 
                 <aside class="wifi-qr-card">
-                    <h2>QR Code</h2>
-                    <p class="admin-muted">Ky QR gjenerohet lokalisht në browser me algoritëm standard QR. Nuk përdor shërbim të jashtëm.</p>
+                    <h2>Kodi QR</h2>
+                    <p class="admin-muted">Kodi QR krijohet automatikisht nga të dhënat e ruajtura të WiFi.</p>
 
                     <div class="wifi-qr-box" id="wifiQrBox" data-qr-payload="<?= e($qrPayload) ?>">
-                        QR po krijohet...
+                        Kodi QR po krijohet...
                     </div>
 
                     <div class="wifi-preview-list">
@@ -237,7 +237,7 @@ $qrPayload = wifi_qr_payload_local($data['ssid'], $data['password'], $data['secu
 
                         <div class="wifi-preview-item">
                             <small>Statusi</small>
-                            <strong>QR automatik</strong>
+                            <strong>Kodi QR aktiv</strong>
                         </div>
                     </div>
 
