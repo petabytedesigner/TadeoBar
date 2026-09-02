@@ -59,15 +59,7 @@ The admin login includes a Gmail SMTP password-recovery flow:
 
 The editable recovery email is also the email login identifier. Changing it from Admin → Settings requires the current password and a 6-digit verification code sent to the new address; the existing email remains active until verification succeeds. The protected recovery email remains recovery-only and cannot be used to log in.
 
-Gmail SMTP credentials and protected recovery secrets stay in `public/includes/recovery.local.php` and are never committed.
-
-Initial live configuration is performed from the authenticated one-time page:
-
-```text
-/tadeo-admin/recovery-setup.php
-```
-
-The setup page requires the current admin password, tests Gmail SMTP/TLS/authentication, sends a test message to both recovery destinations, ensures the password-reset DB table exists, hashes the private protection code, and only then creates `recovery.local.php`. Once completed, the setup page refuses to overwrite the existing recovery configuration and can be deleted after live verification.
+Gmail SMTP credentials and protected recovery secrets stay in `public/includes/recovery.local.php` and are never committed. The initial authenticated recovery setup page was removed after successful live end-to-end verification; future restores must recreate the private recovery configuration outside Git and then verify Forgot Password on the restored installation.
 
 Database credentials remain separate in:
 
@@ -154,7 +146,7 @@ For a brand-new server/restore, `config.local.php` must still be created on that
 
 ```text
 public/                 Public PHP application and assets
-public/tadeo-admin/     Admin panel + Forgot Password + one-time recovery setup
+public/tadeo-admin/     Admin panel + Forgot Password
 public/includes/        Shared PHP helpers, DB/security config loader, recovery logic, ordering logic and SMTP client
 database/schema.sql     Complete non-secret application schema
 database/migrations/    Focused upgrade scripts for existing installations
@@ -170,4 +162,4 @@ RESTORE.md              Full restore/recovery guide
 
 `database/seed/tadeobar-menu.sql` is a sanitized menu snapshot generated on May 17, 2026. It is a fallback for menu recovery, not the authoritative final live database export.
 
-For complete recovery, keep a private full database backup outside GitHub and follow `RESTORE.md`.
+For complete recovery, follow `RESTORE.md` and keep the private credentials/configuration outside GitHub.
