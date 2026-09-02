@@ -439,6 +439,16 @@ function password_reset_verify_code(PDO $pdo, int $resetId, string $code): array
     return ['admin_id' => (int)$row['admin_id']];
 }
 
+function password_reset_clear_authorization(): void
+{
+    unset(
+        $_SESSION['password_reset_admin_id'],
+        $_SESSION['password_reset_authorized_until'],
+        $_SESSION['password_reset_authorized_reset_id'],
+        $_SESSION['password_reset_authorized_session_version']
+    );
+}
+
 function password_reset_authorized_admin_id(): ?int
 {
     admin_session_start();
@@ -448,22 +458,13 @@ function password_reset_authorized_admin_id(): ?int
     $authorizedResetId = (int)($_SESSION['password_reset_authorized_reset_id'] ?? 0);
     $authorizedSessionVersion = (int)($_SESSION['password_reset_authorized_session_version'] ?? 0);
 
-    $clearAuthorization = static function (): void {
-        unset(
-            $_SESSION['password_reset_admin_id'],
-            $_SESSION['password_reset_authorized_until'],
-            $_SESSION['password_reset_authorized_reset_id'],
-            $_SESSION['password_reset_authorized_session_version']
-        );
-    };
-
     if (
         $adminId <= 0
         || $authorizedUntil < time()
         || $authorizedResetId <= 0
         || $authorizedSessionVersion <= 0
     ) {
-        $clearAuthorization();
+        password_reset_clear_authorization();
         return null;
     }
 
@@ -478,7 +479,7 @@ function password_reset_authorized_admin_id(): ?int
     $currentSessionVersion = $stmt->fetchColumn();
 
     if ($currentSessionVersion === false || (int)$currentSessionVersion !== $authorizedSessionVersion) {
-        $clearAuthorization();
+        password_reset_clear_authorization();
         return null;
     }
 
@@ -489,7 +490,7 @@ function password_reset_authorized_admin_id(): ?int
     $latestResetId = (int)$stmt->fetchColumn();
 
     if ($latestResetId !== $authorizedResetId) {
-        $clearAuthorization();
+        password_reset_clear_authorization();
         return null;
     }
 
@@ -506,6 +507,15 @@ function password_reset_complete(PDO $pdo, int $adminId, string $newPassword): v
         throw new RuntimeException('Password-i i ri duhet të ketë të paktën 10 karaktere.');
     }
 
+    admin_session_start();
+    $authorizedResetId = (int)($_SESSION['password_reset_authorized_reset_id'] ?? 0);
+    $authorizedSessionVersion = (int)($_SESSION['password_reset_authorized_session_version'] ?? 0);
+
+    if ($authorizedResetId <= 0 || $authorizedSessionVersion <= 0) {
+        password_reset_clear_authorization();
+        throw new RuntimeException('Autorizimi për ndryshimin e password-it ka skaduar.');
+    }
+
     $hash = password_hash($newPassword, PASSWORD_DEFAULT);
     if ($hash === false) {
         throw new RuntimeException('Password-i i ri nuk u ruajt dot.');
@@ -517,6 +527,26 @@ function password_reset_complete(PDO $pdo, int $adminId, string $newPassword): v
     $pdo->beginTransaction();
 
     try {
+        $stmt = $pdo->prepare(
+            'SELECT session_version FROM admins WHERE id = ? AND is_active = 1 FOR UPDATE'
+        );
+        $stmt->execute([$adminId]);
+        $currentSessionVersion = $stmt->fetchColumn();
+
+        if ($currentSessionVersion === false || (int)$currentSessionVersion !== $authorizedSessionVersion) {
+            throw new RuntimeException('Autorizimi për ndryshimin e password-it nuk është më i vlefshëm.');
+        }
+
+        $stmt = $pdo->prepare(
+            'SELECT MAX(id) FROM password_reset_codes WHERE admin_id = ? AND sent_at IS NOT NULL'
+        );
+        $stmt->execute([$adminId]);
+        $latestResetId = (int)$stmt->fetchColumn();
+
+        if ($latestResetId !== $authorizedResetId) {
+            throw new RuntimeException('Është kërkuar një kod më i ri. Verifiko kodin më të fundit.');
+        }
+
         $stmt = $pdo->prepare(
             'UPDATE admins '
             . 'SET password_hash = ?, session_version = session_version + 1 '
@@ -542,14 +572,8 @@ function password_reset_complete(PDO $pdo, int $adminId, string $newPassword): v
         throw $e;
     }
 
-    admin_session_start();
-    unset(
-        $_SESSION['password_reset_admin_id'],
-        $_SESSION['password_reset_authorized_until'],
-        $_SESSION['password_reset_authorized_reset_id'],
-        $_SESSION['password_reset_authorized_session_version'],
-        $_SESSION['password_reset_id']
-    );
+    password_reset_clear_authorization();
+    unset($_SESSION['password_reset_id']);
     session_regenerate_id(true);
 
     $barName = site_bar_name();
