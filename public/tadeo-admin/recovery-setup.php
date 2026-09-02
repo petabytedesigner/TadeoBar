@@ -175,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$completed && !$errors) {
                     $testSubject,
                     $testBody
                 );
-                $checks[] = 'Gmail SMTP/TLS/Auth dhe email-i i mbrojtur: në rregull';
+                $checks[] = 'Gmail SMTP/TLS, autentikimi dhe email-i i mbrojtur: në rregull';
 
                 smtp_send_text_email_with_config(
                     $smtpConfig,
