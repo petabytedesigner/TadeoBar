@@ -44,11 +44,11 @@
                     return;
                 }
                 editorLibraryPromise = null;
-                reject(new Error('Bundle-i i editorit u ngarkua, por editori nuk u inicializua.'));
+                reject(new Error('Skedari i editorit u ngarkua, por editori nuk u inicializua.'));
             };
             script.onerror = function () {
                 editorLibraryPromise = null;
-                reject(new Error('Editor-i i imazhit nuk u ngarkua dot.'));
+                reject(new Error('Editori i imazhit nuk u ngarkua dot.'));
             };
             document.head.appendChild(script);
         });
@@ -64,7 +64,7 @@
         if (savedImage.imageBase64) {
             const parts = savedImage.imageBase64.split(',');
             if (parts.length !== 2) {
-                return Promise.reject(new Error('Editor-i nuk ktheu një imazh të vlefshëm.'));
+                return Promise.reject(new Error('Editori nuk ktheu një imazh të vlefshëm.'));
             }
 
             const binary = atob(parts[1]);
@@ -83,7 +83,7 @@
             return new Promise(function (resolve, reject) {
                 savedImage.imageCanvas.toBlob(function (blob) {
                     if (!blob) {
-                        reject(new Error('Editor-i nuk arriti të krijojë imazhin final.'));
+                        reject(new Error('Editori nuk arriti të krijojë imazhin final.'));
                         return;
                     }
 
@@ -95,12 +95,12 @@
             });
         }
 
-        return Promise.reject(new Error('Editor-i nuk ktheu të dhëna për imazhin final.'));
+        return Promise.reject(new Error('Editori nuk ktheu të dhëna për imazhin final.'));
     }
 
     function replaceInputFile(input, file) {
         if (typeof DataTransfer !== 'function') {
-            throw new Error('Browser-i nuk mbështet zëvendësimin e sigurt të file-it pas editimit.');
+            throw new Error('Shfletuesi nuk mbështet zëvendësimin e sigurt të skedarit pas përpunimit.');
         }
 
         const transfer = new DataTransfer();
@@ -135,7 +135,7 @@
 
         const ratio = width / height;
         if (ratio < RATIO_MIN || ratio > RATIO_MAX) {
-            return 'Rezultati final duhet të jetë portrait me raport W/H 0.55–0.82. Zgjidh 9:16, 2:3, 3:4 ose 4:5 te Crop.';
+            return 'Rezultati final duhet të jetë vertikal, me raport gjerësi/lartësi 0.55–0.82. Zgjidh 9:16, 2:3, 3:4 ose 4:5 te Prerja.';
         }
 
         return '';
@@ -165,7 +165,7 @@
             adjustTab: 'Rregullo',
             finetuneTab: 'Përmirëso',
             filtersTab: 'Filtra',
-            watermarkTab: 'Watermark',
+            watermarkTab: 'Shenjë uji',
             annotateTabLabel: 'Shënime',
             resize: 'Përmasa',
             resizeTab: 'Përmasa',
@@ -176,8 +176,8 @@
             original: 'Origjinal',
             custom: 'E personalizuar',
             square: 'Katror',
-            landscape: 'Landscape',
-            portrait: 'Portrait',
+            landscape: 'Horizontal',
+            portrait: 'Vertikal',
             ellipse: 'Elips',
             arrowTool: 'Shigjetë',
             blurTool: 'Mjegullim',
@@ -199,8 +199,8 @@
             penTool: 'Laps',
             polygonTool: 'Poligon',
             rectangleTool: 'Drejtkëndësh',
-            resizeWidthTitle: 'Gjerësia në pixel',
-            resizeHeightTitle: 'Lartësia në pixel',
+            resizeWidthTitle: 'Gjerësia në piksel',
+            resizeHeightTitle: 'Lartësia në piksel',
             toggleRatioLockTitle: 'Kyç/çkyç raportin',
             resetSize: 'Rikthe përmasat origjinale',
             rotateTool: 'Rrotullo',
@@ -210,9 +210,9 @@
             letterSpacing: 'Hapësira mes shkronjave',
             lineHeight: 'Lartësia e rreshtit',
             warmthTool: 'Ngrohtësi',
-            addWatermark: '+ Shto watermark',
-            addTextWatermark: '+ Shto watermark me tekst',
-            uploadWatermark: 'Ngarko watermark',
+            addWatermark: '+ Shto shenjë uji',
+            addTextWatermark: '+ Shto shenjë uji me tekst',
+            uploadWatermark: 'Ngarko shenjë uji',
             addWatermarkAsText: 'Shto si tekst',
             opacity: 'Opaciteti',
             transparency: 'Transparenca',
@@ -342,9 +342,9 @@
                 suppressInputEditor = false;
                 closeEditor();
                 syncModeUi();
-                setNotice('Editimi u aplikua. Ky është imazhi që do të dërgohet kur ruan produktin.', 'ok');
+                setNotice('Ndryshimet u aplikuan. Ky imazh do të ruhet me produktin.', 'ok');
             }).catch(function (error) {
-                showEditorWarning(error && error.message ? error.message : 'Imazhi i edituar nuk u përgatit dot.');
+                showEditorWarning(error && error.message ? error.message : 'Imazhi i përpunuar nuk u përgatit dot.');
             });
         }
 
@@ -454,7 +454,7 @@
                 setNotice('', '');
                 renderEditor(source, FIE);
             }).catch(function (error) {
-                setNotice(error && error.message ? error.message : 'Editor-i i imazhit nuk u ngarkua dot.', 'error');
+                setNotice(error && error.message ? error.message : 'Editori i imazhit nuk u ngarkua dot.', 'error');
             });
         }
 
@@ -537,7 +537,7 @@
                 const file = currentFile();
                 if (file && !hasAppliedEdit) {
                     event.preventDefault();
-                    setNotice('Je në mënyrën EDITO. Hape editorin dhe shtyp Apliko para se të ruash produktin.', 'error');
+                    setNotice('Mënyra EDITO është aktive. Hape editorin dhe shtyp Apliko para se të ruash produktin.', 'error');
                     openEditor(file);
                 }
             });
