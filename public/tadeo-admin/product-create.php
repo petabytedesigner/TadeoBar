@@ -116,9 +116,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <div class="form-grid">
                     <div>
-                        <label>Numri i produktit</label>
+                        <label>Pozicioni në menu</label>
                         <input name="menu_number" type="number" min="1" max="<?= e($maxMenuPosition) ?>" value="<?= e($data['menu_number']) ?>" required>
-                        <div class="help-text">Pozicioni duhet të jetë 1–<?= e($maxMenuPosition) ?>. Nëse zgjedh një pozicion ekzistues, produktet pas tij zhvendosen automatikisht që numërimi të mbetet strikt 1…N.</div>
+                        <div class="help-text">Zgjidh pozicionin e produktit në menu. Nëse pozicioni është i zënë, produktet e tjera rirenditen automatikisht.</div>
                     </div>
 
                     <div>
@@ -168,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 </label>
                             </div>
                             <div class="help-text">
-                                AUTO përdor kontrollin dhe optimizimin aktual. EDITO hap editorin e plotë para upload-it për crop, zoom, rotate, flip, përmirësime, filtra, resize, shënime dhe watermark.
+                                AUTO kontrollon dhe optimizon automatikisht imazhin gjatë ruajtjes. EDITO hap editorin para ruajtjes për prerje, zmadhim, rrotullim, pasqyrim, përmirësime, filtra, ndryshim përmasash, shënime dhe watermark.
                             </div>
                         </div>
 
@@ -179,24 +179,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             data-product-image-input
                             data-preview-target="productImagePreview"
                         >
-                        <div class="help-text">Imazhi final i produktit duhet të jetë portrait. Lejohen raporte nga 9:16 deri afërsisht 4:5, p.sh. 720×1280, 900×1350, 1080×1620 ose 1080×1920. Syno 150–350 KB; mbi 500 KB është i rëndë, ndërsa maksimumi final është 800 KB. Lejohen JPG, PNG ose WEBP deri 10 MB; serveri e ruan automatikisht si WEBP të optimizuar.</div>
+                        <div class="help-text">Imazhi i produktit duhet të jetë vertikal. Lejohen raporte nga 9:16 deri afërsisht 4:5, p.sh. 720×1280, 900×1350, 1080×1620 ose 1080×1920. Syno 150–350 KB; mbi 500 KB konsiderohet i rëndë dhe maksimumi final është 800 KB. Lejohen JPG, PNG ose WEBP deri në 10 MB dhe imazhi ruhet automatikisht si WEBP i optimizuar.</div>
 
                         <div class="product-image-preview" id="productImagePreview" aria-live="polite" hidden>
                             <div class="product-image-preview-grid">
                                 <div class="product-image-preview-media">
-                                    <img data-preview-image alt="Preview i imazhit">
+                                    <img data-preview-image alt="Pamja paraprake e imazhit">
                                 </div>
                                 <div class="product-image-preview-details">
                                     <div class="product-image-preview-status is-loading" data-preview-status>Po kontrollohet imazhi…</div>
                                     <button type="button" class="btn btn-secondary product-image-edit-now" data-edit-now hidden>Editoje tani</button>
                                     <dl class="product-image-preview-meta">
-                                        <div><dt>File</dt><dd data-preview-name>—</dd></div>
-                                        <div><dt>Format</dt><dd data-preview-type>—</dd></div>
-                                        <div><dt>Dimensione</dt><dd data-preview-dimensions>—</dd></div>
-                                        <div><dt>Ratio W/H</dt><dd data-preview-ratio>—</dd></div>
-                                        <div><dt>Madhësia burim</dt><dd data-preview-size>—</dd></div>
+                                        <div><dt>Skedari</dt><dd data-preview-name>—</dd></div>
+                                        <div><dt>Formati</dt><dd data-preview-type>—</dd></div>
+                                        <div><dt>Dimensionet</dt><dd data-preview-dimensions>—</dd></div>
+                                        <div><dt>Raporti gjerësi/lartësi</dt><dd data-preview-ratio>—</dd></div>
+                                        <div><dt>Madhësia</dt><dd data-preview-size>—</dd></div>
                                     </dl>
-                                    <p class="product-image-preview-note">Preview kontrollon file-in që do të dërgohet. Serveri bën optimizimin final WEBP dhe validimin përfundimtar gjatë ruajtjes.</p>
+                                    <p class="product-image-preview-note">Pamja paraprake kontrollon imazhin para ruajtjes. Gjatë ruajtjes kryhet validimi përfundimtar dhe optimizimi automatik në WEBP.</p>
                                 </div>
                             </div>
                         </div>
