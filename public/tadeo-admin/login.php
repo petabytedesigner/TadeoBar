@@ -12,17 +12,17 @@ if (admin_current() !== null) {
 $barName = site_bar_name();
 
 $error = '';
-$username = trim((string)($_POST['username'] ?? ''));
+$identifier = trim((string)($_POST['identifier'] ?? ''));
 $password = (string)($_POST['password'] ?? '');
 $resetSuccess = (string)($_GET['reset'] ?? '') === 'success';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_verify()) {
         $error = 'Kontrolli i sigurisë dështoi. Rifresko faqen dhe provo përsëri.';
-    } elseif ($username === '') {
-        $error = 'Vendos username.';
-    } elseif (is_login_blocked($username)) {
-        $admin = find_admin_by_username($username);
+    } elseif ($identifier === '') {
+        $error = 'Vendos username-in ose email-in.';
+    } else {
+        $admin = find_admin_by_login_identifier($identifier);
         $passwordHash = $admin !== null
             ? (string)$admin['password_hash']
             : LOGIN_DUMMY_PASSWORD_HASH;
@@ -31,30 +31,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             && (int)$admin['is_active'] === 1
             && $passwordValid;
 
-        if (!$credentialsValid) {
-            record_login_attempt($username, false);
-        }
+        if (is_login_blocked($identifier, $admin)) {
+            if (!$credentialsValid) {
+                record_login_attempt($identifier, false, $admin);
+            }
 
-        $error = 'Username ose password i gabuar.';
-    } else {
-        $admin = find_admin_by_username($username);
-        $passwordHash = $admin !== null
-            ? (string)$admin['password_hash']
-            : LOGIN_DUMMY_PASSWORD_HASH;
-        $passwordValid = password_verify($password, $passwordHash);
-
-        if (
-            $admin !== null
-            && (int)$admin['is_active'] === 1
-            && $passwordValid
-        ) {
-            record_login_attempt($username, true);
+            $error = 'Username/email ose password i gabuar.';
+        } elseif ($credentialsValid) {
+            record_login_attempt($identifier, true, $admin);
             login_admin($admin);
             redirect('/tadeo-admin/dashboard.php');
+        } else {
+            record_login_attempt($identifier, false, $admin);
+            $error = 'Username/email ose password i gabuar.';
         }
-
-        record_login_attempt($username, false);
-        $error = 'Username ose password i gabuar.';
     }
 }
 ?>
@@ -82,8 +72,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <form method="post" autocomplete="on">
             <?= csrf_field() ?>
 
-            <label>Username</label>
-            <input name="username" value="<?= e($username) ?>" autocomplete="username" maxlength="120" required>
+            <label>Username ose email</label>
+            <input name="identifier" value="<?= e($identifier) ?>" autocomplete="username" maxlength="190" required>
 
             <label>Password</label>
             <input name="password" type="password" autocomplete="current-password" required>
