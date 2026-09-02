@@ -247,6 +247,6 @@ $qrPayload = wifi_qr_payload_local($data['ssid'], $data['password'], $data['secu
         </main>
     </div>
 
-    <script src="/assets/js/wifi-qr.js?v=20260512-wifi-local-qr-1"></script>
+    <script src="/assets/js/wifi-qr.js?v=20260902-copy-1"></script>
 </body>
 </html>
