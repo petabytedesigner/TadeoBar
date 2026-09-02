@@ -56,7 +56,7 @@ $flash = product_trash_flash((string)($_GET['msg'] ?? ''));
 <html lang="sq">
 <head>
     <meta charset="utf-8">
-    <title>Produktet e fshira | <?= e(site_bar_name()) ?> Admin</title>
+    <title>Koshi i produkteve | <?= e(site_bar_name()) ?> Admin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-admin-header-actions-2">
     <style>
@@ -149,13 +149,13 @@ $flash = product_trash_flash((string)($_GET['msg'] ?? ''));
         <?php render_admin_header($admin, 'products'); ?>
 
         <main>
-            <h1 class="admin-title">Produktet e fshira</h1>
+            <h1 class="admin-title">Koshi i produkteve</h1>
 
             <section class="trash-hero">
                 <div class="trash-hero-grid">
                     <div>
                         <p class="admin-muted">
-                            Produktet në kosh nuk shfaqen në menunë publike. Pozicioni i mëparshëm ruhet për rikthim, ndërsa numërimi i menusë rirregullohet automatikisht.
+                            Produktet në kosh nuk shfaqen në menunë publike. Pozicioni i mëparshëm ruhet për rikthim dhe renditja e menusë përditësohet automatikisht.
                             Produktet që qëndrojnë në kosh më shumë se <strong>30 ditë</strong> fshihen automatikisht bashkë me imazhin e tyre kur ai nuk përdoret diku tjetër.
                         </p>
                     </div>
@@ -184,7 +184,7 @@ $flash = product_trash_flash((string)($_GET['msg'] ?? ''));
 
             <?php if ($products === []): ?>
                 <div class="panel">
-                    <p class="admin-muted">Nuk ka produkte të fshira.</p>
+                    <p class="admin-muted">Koshi i produkteve është bosh.</p>
                 </div>
             <?php else: ?>
                 <section class="product-grid">
@@ -210,8 +210,8 @@ $flash = product_trash_flash((string)($_GET['msg'] ?? ''));
                             <div class="product-price"><?= e($product['price_all']) ?> ALL</div>
 
                             <div class="trash-meta">
-                                <span>Fshirë më: <?= e($product['deleted_at']) ?></span>
-                                <span>Ditë deri në fshirje: <?= e($product['days_left']) ?></span>
+                                <span>Në kosh që prej: <?= e($product['deleted_at']) ?></span>
+                                <span>Ditë deri në fshirjen automatike: <?= e($product['days_left']) ?></span>
                             </div>
 
                             <div class="trash-card-note">
