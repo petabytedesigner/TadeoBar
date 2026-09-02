@@ -20,7 +20,7 @@ Admin login has two server-side protection layers:
 - hard IP guard: 15 failed login attempts from the same IP within a 24-hour counter window trigger a 24-hour block
 - rotating between username and recovery email does not bypass the soft guard
 - the hard counter is independent of the login identifier, so rotating unknown identifiers does not bypass it
-- a successful login resets the hard counter for that IP
+- a successful login resets both the soft account/IP counter and the hard counter for that IP
 - only SHA-256 IP hashes are stored; raw IP addresses are not stored in the guard tables
 - an actively blocked IP is denied across the dynamic Bar Tadeo application, including public/API and admin/recovery routes
 - other IP addresses remain unaffected
