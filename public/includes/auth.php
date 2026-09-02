@@ -218,6 +218,26 @@ function auth_recovery_email(PDO $pdo): string
     return filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : '';
 }
 
+function find_admin_by_username(string $username): ?array
+{
+    $username = trim($username);
+    if ($username === '') {
+        return null;
+    }
+
+    $pdo = db();
+    ensure_admin_session_version_schema($pdo);
+
+    $stmt = $pdo->prepare(
+        'SELECT id, username, password_hash, session_version, is_active '
+        . 'FROM admins WHERE username = ? LIMIT 1'
+    );
+    $stmt->execute([$username]);
+    $admin = $stmt->fetch();
+
+    return $admin ?: null;
+}
+
 function find_admin_by_login_identifier(string $identifier): ?array
 {
     $identifier = trim($identifier);
@@ -225,38 +245,25 @@ function find_admin_by_login_identifier(string $identifier): ?array
         return null;
     }
 
-    $pdo = db();
-    ensure_admin_session_version_schema($pdo);
-
-    if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
-        $recoveryEmail = auth_recovery_email($pdo);
-
-        if ($recoveryEmail === '' || strcasecmp($identifier, $recoveryEmail) !== 0) {
-            return null;
-        }
-
-        $stmt = $pdo->query(
-            'SELECT id, username, password_hash, session_version, is_active '
-            . 'FROM admins WHERE is_active = 1 ORDER BY id ASC LIMIT 1'
-        );
-        $admin = $stmt->fetch();
-
-        return $admin ?: null;
+    if (!filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
+        return find_admin_by_username($identifier);
     }
 
-    $stmt = $pdo->prepare(
+    $pdo = db();
+    ensure_admin_session_version_schema($pdo);
+    $recoveryEmail = auth_recovery_email($pdo);
+
+    if ($recoveryEmail === '' || strcasecmp($identifier, $recoveryEmail) !== 0) {
+        return null;
+    }
+
+    $stmt = $pdo->query(
         'SELECT id, username, password_hash, session_version, is_active '
-        . 'FROM admins WHERE username = ? LIMIT 1'
+        . 'FROM admins WHERE is_active = 1 ORDER BY id ASC LIMIT 1'
     );
-    $stmt->execute([$identifier]);
     $admin = $stmt->fetch();
 
     return $admin ?: null;
-}
-
-function find_admin_by_username(string $username): ?array
-{
-    return find_admin_by_login_identifier($username);
 }
 
 function login_attempt_key(string $identifier, ?array $admin = null): string
@@ -302,16 +309,33 @@ function cleanup_old_login_attempts(PDO $pdo): void
     }
 }
 
+function clear_failed_login_attempts(PDO $pdo, string $identifier, ?array $admin = null): void
+{
+    $stmt = $pdo->prepare(
+        'DELETE FROM login_attempts WHERE username = ? AND ip_hash = ? AND success = 0'
+    );
+    $stmt->execute([
+        login_attempt_key($identifier, $admin),
+        client_ip_hash(),
+    ]);
+}
+
 function record_login_attempt(string $identifier, bool $success, ?array $admin = null): void
 {
     $pdo = db();
+    $attemptKey = login_attempt_key($identifier, $admin);
+    $ipHash = client_ip_hash();
+
+    if ($success) {
+        clear_failed_login_attempts($pdo, $identifier, $admin);
+    }
 
     $stmt = $pdo->prepare(
         'INSERT INTO login_attempts (username, ip_hash, success) VALUES (?, ?, ?)'
     );
     $stmt->execute([
-        login_attempt_key($identifier, $admin),
-        client_ip_hash(),
+        $attemptKey,
+        $ipHash,
         $success ? 1 : 0,
     ]);
 
