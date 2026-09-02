@@ -103,7 +103,7 @@
     function makeDataCodewords(text) {
         const bytes = utf8Bytes(text);
         if (bytes.length > 106) {
-            throw new Error('WiFi QR text is too long for the local QR generator.');
+            throw new Error('Të dhënat e WiFi janë shumë të gjata për gjenerimin lokal të kodit QR.');
         }
 
         const bb = new BitBuffer();
@@ -285,7 +285,7 @@
         const quiet = 4;
         const dim = modules.length + quiet * 2;
         const parts = [
-            '<svg class="wifi-qr-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + dim + ' ' + dim + '" role="img" aria-label="WiFi QR Code" shape-rendering="crispEdges">',
+            '<svg class="wifi-qr-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + dim + ' ' + dim + '" role="img" aria-label="Kodi QR i WiFi" shape-rendering="crispEdges">',
             '<rect width="100%" height="100%" fill="#fff"/>'
         ];
 
@@ -305,14 +305,14 @@
     function renderBox(box) {
         const payload = box.getAttribute('data-qr-payload') || '';
         if (!payload) {
-            box.textContent = 'QR nuk është i disponueshëm.';
+            box.textContent = 'Kodi QR nuk është i disponueshëm.';
             return;
         }
 
         try {
             box.innerHTML = toSvg(encode(payload));
         } catch (error) {
-            box.textContent = 'QR nuk u krijua dot: ' + error.message;
+            box.textContent = 'Kodi QR nuk u krijua dot: ' + error.message;
         }
     }
 
