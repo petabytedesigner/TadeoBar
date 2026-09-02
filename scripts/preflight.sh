@@ -106,6 +106,10 @@ grep -q 'function find_admin_by_login_identifier' public/includes/auth.php \
   || fail "Authentication does not support username/email identifiers"
 grep -q "return 'admin:'" public/includes/auth.php \
   || fail "Username/email aliases are not sharing the same login-attempt key"
+grep -q 'function clear_failed_login_attempts' public/includes/auth.php \
+  || fail "Successful authentication does not have a soft-failure reset helper"
+grep -q 'clear_failed_login_attempts($pdo, $identifier, $admin)' public/includes/auth.php \
+  || fail "Successful authentication is not resetting the soft brute-force counter"
 grep -q 'session_version' public/includes/auth.php \
   || fail "Admin sessions are not versioned"
 grep -q 'Username ose email' public/tadeo-admin/login.php \
