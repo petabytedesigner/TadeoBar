@@ -21,7 +21,7 @@ function render_admin_header(array $admin, string $active): void
         <div class="admin-topbar">
             <div class="admin-identity">
                 <div class="admin-brand"><?= e($barName) ?></div>
-                <div class="admin-muted">I identifikuar si <?= e($admin['username'] ?? '') ?></div>
+                <div class="admin-muted">Llogaria: <?= e($admin['username'] ?? '') ?></div>
             </div>
 
             <div class="admin-header-actions">
