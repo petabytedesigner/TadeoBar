@@ -9,23 +9,23 @@ require_admin();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !csrf_verify()) {
     http_response_code(403);
-    exit('Forbidden.');
+    exit('Kërkesa nuk lejohet.');
 }
 
 $id = (int)($_POST['id'] ?? 0);
 
 if ($id <= 0) {
-    redirect('/tadeo-admin/product-trash.php?msg=Produkt%20i%20pavlefshem');
+    redirect('/tadeo-admin/product-trash.php?msg=' . rawurlencode('Produkt i pavlefshëm'));
 }
 
 try {
     $pdo = db();
 
     if (!product_ordering_restore($pdo, $id)) {
-        redirect('/tadeo-admin/product-trash.php?msg=Produkt%20i%20pavlefshem');
+        redirect('/tadeo-admin/product-trash.php?msg=' . rawurlencode('Produkt i pavlefshëm'));
     }
 
-    redirect('/tadeo-admin/product-trash.php?msg=Produkti%20u%20rikthye%20si%20i%20fshehur');
+    redirect('/tadeo-admin/product-trash.php?msg=' . rawurlencode('Produkti u rikthye si i fshehur'));
 } catch (Throwable $e) {
-    redirect('/tadeo-admin/product-trash.php?msg=Produkti%20nuk%20u%20rikthye');
+    redirect('/tadeo-admin/product-trash.php?msg=' . rawurlencode('Produkti nuk u rikthye'));
 }
