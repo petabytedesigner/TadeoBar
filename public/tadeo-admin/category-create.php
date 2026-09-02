@@ -117,9 +117,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <div>
-                        <label>Emoji fallback</label>
+                        <label>Emoji rezervë</label>
                         <input name="icon" value="<?= e($data['icon']) ?>">
-                        <div class="help-text">Përdoret vetëm nëse nuk ka imazh kategorie.</div>
+                        <div class="help-text">Shfaqet kur kategoria nuk ka imazh.</div>
                     </div>
 
                     <div>
@@ -130,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="full">
                         <label>Ngarko imazh për kategorinë</label>
                         <input name="icon_image_file" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
-                        <div class="help-text">Lejohen JPG, PNG ose WEBP deri 10 MB; ruhet automatikisht si WEBP i optimizuar. Për kategoritë nuk ka raport të detyruar.</div>
+                        <div class="help-text">Lejohen JPG, PNG ose WEBP deri në 10 MB. Imazhi ruhet automatikisht si WEBP i optimizuar dhe nuk kërkohet një raport i caktuar.</div>
                     </div>
                 </div>
 

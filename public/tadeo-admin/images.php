@@ -147,13 +147,13 @@ function ensure_image_detach_history_table(PDO $pdo): void
 function flash_message(string $msg): string
 {
     return match ($msg) {
-        'detached' => 'Imazhi u hoq nga produkti/kategoria. File-i mbeti në server.',
+        'detached' => 'Imazhi u hoq nga produkti ose kategoria. Skedari mbeti në server.',
         'deleted' => 'Imazhi u fshi përgjithmonë.',
         'image_trashed' => 'Imazhi u çua në kosh.',
         'attached' => 'Imazhi u lidh me sukses.',
         'already_used' => 'Ky imazh është tashmë i lidhur me një produkt ose kategori.',
-        'attach_failed' => 'Imazhi nuk u lidh dot. Kontrollo nëse produkti/kategoria ka tashmë imazh.',
-        'delete_failed' => 'Lidhja u hoq, por file-i nuk u fshi dot nga serveri.',
+        'attach_failed' => 'Imazhi nuk u lidh dot. Kontrollo nëse produkti ose kategoria ka tashmë imazh.',
+        'delete_failed' => 'Lidhja u hoq, por skedari nuk u fshi dot nga serveri.',
         'csrf' => 'Kontrolli i sigurisë dështoi. Rifresko faqen dhe provo përsëri.',
         'invalid' => 'Kërkesa nuk është e vlefshme.',
         'error' => 'Veprimi nuk u krye. Provo përsëri.',
@@ -609,7 +609,7 @@ $flash = flash_message($msg);
         <main>
             <h1 class="admin-title">Imazhet</h1>
             <p class="admin-muted">
-                Menaxho imazhet e produkteve dhe kategorive. Mund të shtosh, ndryshosh, heqësh lidhjen ose të fshish file-in përgjithmonë.
+                Menaxho imazhet e produkteve dhe kategorive. Mund të shtosh, ndryshosh, heqësh lidhjen ose të fshish skedarin përgjithmonë.
             </p>
 
             <?php if ($flash !== ''): ?>
@@ -639,7 +639,7 @@ $flash = flash_message($msg);
                 <div class="media-toolbar-grid">
                     <label class="media-filter-field">
                         <span>Kërko</span>
-                        <input type="search" id="imageSearch" placeholder="Produkt, kategori, emër file-i...">
+                        <input type="search" id="imageSearch" placeholder="Produkt, kategori, emër skedari...">
                     </label>
 
                     <label class="media-filter-field">
@@ -651,7 +651,7 @@ $flash = flash_message($msg);
                             <option value="category-linked">Kategori me imazh</option>
                             <option value="category-missing">Kategori pa imazh</option>
                             <option value="unused">Imazhe të palidhura</option>
-                            <option value="missing-file">File mungon në server</option>
+                            <option value="missing-file">Skedari mungon në server</option>
                             <option value="large-file">Mbi 500 KB</option>
                             <option value="non-webp">Jo WebP</option>
                         </select>
@@ -708,7 +708,7 @@ $flash = flash_message($msg);
 
                                     <form method="post" action="/tadeo-admin/image-detach.php" class="js-confirm-action"
                                           data-title="Hiq imazhin nga produkti?"
-                                          data-message="Produkti do të mbetet në menu, por pa këtë imazh. File-i nuk do të fshihet nga serveri."
+                                          data-message="Produkti do të mbetet në menu, por pa këtë imazh. Skedari nuk do të fshihet nga serveri."
                                           data-confirm-label="Hiq lidhjen">
                                         <?= csrf_field() ?>
                                         <input type="hidden" name="type" value="product">
@@ -769,7 +769,7 @@ $flash = flash_message($msg);
 
                                     <form method="post" action="/tadeo-admin/image-detach.php" class="js-confirm-action"
                                           data-title="Hiq imazhin nga kategoria?"
-                                          data-message="Kategoria do të mbetet në menu, por pa këtë imazh. File-i nuk do të fshihet nga serveri."
+                                          data-message="Kategoria do të mbetet në menu, por pa këtë imazh. Skedari nuk do të fshihet nga serveri."
                                           data-confirm-label="Hiq lidhjen">
                                         <?= csrf_field() ?>
                                         <input type="hidden" name="type" value="category">
@@ -876,7 +876,7 @@ $flash = flash_message($msg);
                 <summary>
                     <span class="media-collapsible-title">
                         <span>Imazhe të palidhura</span>
-                        <small>Hape vetëm kur do të kontrollosh, lidhësh ose çosh në kosh file që nuk përdoren.</small>
+                        <small>Hape vetëm kur do të kontrollosh, lidhësh ose çosh në kosh skedarët që nuk përdoren.</small>
                     </span>
                     <strong class="media-collapsible-count"><?= e($unusedCount) ?></strong>
                 </summary>
@@ -892,7 +892,7 @@ $flash = flash_message($msg);
                             ?>
                             <article class="product-admin-card">
                                 <div class="product-admin-top">
-                                    <div class="product-number">File</div>
+                                    <div class="product-number">Skedar</div>
                                     <span class="badge badge-hidden">I palidhur</span>
                                 </div>
 
@@ -905,7 +905,7 @@ $flash = flash_message($msg);
                                 </div>
 
                                 <h3>Imazh i palidhur</h3>
-                                <p>Nuk përdoret nga produkt/kategori.</p>
+                                <p>Nuk përdoret nga asnjë produkt ose kategori.</p>
 
                                 <?php if ($previousOwner): ?>
                                     <div class="media-previous-owner">
@@ -920,7 +920,7 @@ $flash = flash_message($msg);
                                 <div class="media-path"><?= e($info['path']) ?></div>
                                 <div class="media-meta">
                                     <span>Madhësia: <?= e(human_file_size($info['size'])) ?></span>
-                                    <span>Tipi: File</span>
+                                    <span>Tipi: Skedar</span>
                                 </div>
 
                                 <div class="media-actions">
@@ -965,8 +965,8 @@ $flash = flash_message($msg);
                                     <?php endif; ?>
 
                                     <form method="post" action="/tadeo-admin/image-delete.php" class="js-confirm-action"
-                                          data-title="Ço file-in në kosh?"
-                                          data-message="Ky file nuk është i lidhur me produkt ose kategori. Do të çohet në kosh dhe mund të rikthehet."
+                                          data-title="Ço skedarin në kosh?"
+                                          data-message="Ky skedar nuk është i lidhur me produkt ose kategori. Do të çohet në kosh dhe mund të rikthehet."
                                           data-confirm-label="Ço në kosh">
                                         <?= csrf_field() ?>
                                         <input type="hidden" name="path" value="<?= e($info['path']) ?>">

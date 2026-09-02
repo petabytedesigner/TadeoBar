@@ -311,7 +311,7 @@ foreach ($categories as $category) {
                         $warnings,
                         'warning',
                         'Imazh kategorie shumë i madh',
-                        $nameSq . ' → ' . $imagePath . ' → ' . audit_human_file_size((int)$meta['size']) . ' / limit ' . audit_human_file_size(AUDIT_CATEGORY_IMAGE_MAX_BYTES)
+                        $nameSq . ' → ' . $imagePath . ' → ' . audit_human_file_size((int)$meta['size']) . ' / kufiri ' . audit_human_file_size(AUDIT_CATEGORY_IMAGE_MAX_BYTES)
                     );
                 }
             }
@@ -391,7 +391,7 @@ foreach ($products as $product) {
     }
 
     if ($menuNumber <= 0) {
-        audit_add($critical, 'critical', 'Produkt me numër menuje të pavlefshëm', $label);
+        audit_add($critical, 'critical', 'Produkt me pozicion menuje të pavlefshëm', $label);
     }
 
     if ($categoryId <= 0 || !isset($categoryById[$categoryId])) {
@@ -424,15 +424,15 @@ foreach ($products as $product) {
                 audit_add(
                     $warnings,
                     'warning',
-                    'Imazh produkti mbi limitin maksimal 800 KB',
-                    $label . ' → ' . $imagePath . ' → ' . audit_human_file_size((int)$meta['size']) . ' / limit ' . audit_human_file_size(AUDIT_PRODUCT_IMAGE_MAX_BYTES)
+                    'Imazh produkti mbi kufirin maksimal 800 KB',
+                    $label . ' → ' . $imagePath . ' → ' . audit_human_file_size((int)$meta['size']) . ' / kufiri ' . audit_human_file_size(AUDIT_PRODUCT_IMAGE_MAX_BYTES)
                 );
             } elseif ((int)$meta['size'] > AUDIT_PRODUCT_IMAGE_WARNING_BYTES) {
                 audit_add(
                     $warnings,
                     'warning',
                     'Imazh produkti mbi 500 KB',
-                    $label . ' → ' . $imagePath . ' → ' . audit_human_file_size((int)$meta['size']) . ' / syno 150–350 KB'
+                    $label . ' → ' . $imagePath . ' → ' . audit_human_file_size((int)$meta['size']) . ' / rekomandohet 150–350 KB'
                 );
             }
         }
@@ -441,7 +441,7 @@ foreach ($products as $product) {
 
 foreach ($menuNumberCounts as $menuNumber => $count) {
     if ($count > 1) {
-        audit_add($critical, 'critical', 'Numër menuje i përsëritur', '#' . $menuNumber . ' përdoret ' . $count . ' herë.');
+        audit_add($critical, 'critical', 'Pozicion menuje i përsëritur', '#' . $menuNumber . ' përdoret ' . $count . ' herë.');
     }
 }
 
@@ -459,14 +459,14 @@ if ($liveMenuNumbers !== []) {
         }
 
         if ($unexpectedNumbers !== []) {
-            $details[] = 'jashtë intervalit 1–N: ' . implode(', ', $unexpectedNumbers);
+            $details[] = 'jashtë rendit të pritshëm: ' . implode(', ', $unexpectedNumbers);
         }
 
         audit_add(
             $critical,
             'critical',
-            'Numërimi i menusë nuk është strikt 1…N',
-            'Produktet jashtë koshit duhet të përdorin saktësisht numrat 1–' . count($liveMenuNumbers) . '. ' . implode(' · ', $details)
+            'Numërimi i menusë ka boshllëqe ose vlera jashtë rendit',
+            'Pozicionet duhet të formojnë një seri të vazhdueshme nga 1 deri te numri i produkteve jashtë koshit. ' . implode(' · ', $details)
         );
     }
 }
@@ -535,7 +535,7 @@ foreach ($warnings as $warning) {
 }
 
 if ($productsWithoutImages > 0) {
-    audit_add($info, 'info', 'Produkte pa imazh', (string)$productsWithoutImages . ' produkte aktive/të fshehura nuk kanë imazh.');
+    audit_add($info, 'info', 'Produkte pa imazh', (string)$productsWithoutImages . ' produkte aktive ose të fshehura nuk kanë imazh.');
 }
 
 if ($categoriesWithoutImages > 0) {
@@ -543,19 +543,19 @@ if ($categoriesWithoutImages > 0) {
 }
 
 if (count($unusedImages) > 0) {
-    audit_add($info, 'info', 'File në server por nuk përdoren', (string)count($unusedImages) . ' file janë në uploads/products ose uploads/categories, por nuk përdoren nga DB.');
+    audit_add($info, 'info', 'Skedarë në server që nuk përdoren', (string)count($unusedImages) . ' skedarë janë në uploads/products ose uploads/categories, por nuk përdoren nga databaza.');
 }
 
 if (count($trashImages) > 0) {
-    audit_add($info, 'info', 'Imazhe në kosh', (string)count($trashImages) . ' file janë në uploads/trash.');
+    audit_add($info, 'info', 'Imazhe në kosh', (string)count($trashImages) . ' skedarë janë në uploads/trash.');
 }
 
 if ($trashedProducts > 0) {
-    audit_add($info, 'info', 'Produkte në kosh', (string)$trashedProducts . ' produkte kanë deleted_at dhe nuk shfaqen në menunë publike.');
+    audit_add($info, 'info', 'Produkte në kosh', (string)$trashedProducts . ' produkte janë në kosh dhe nuk shfaqen në menunë publike.');
 }
 
 if (count($dangerousUploadFiles) > 0) {
-    audit_add($warnings, 'warning', 'File të rrezikshme në uploads', (string)count($dangerousUploadFiles) . ' file kanë extension që nuk duhet të jetë në uploads.');
+    audit_add($warnings, 'warning', 'Skedarë të rrezikshëm në uploads', (string)count($dangerousUploadFiles) . ' skedarë kanë një format që nuk duhet të jetë në uploads.');
 }
 
 $totalProducts = count($products);
@@ -601,7 +601,7 @@ function audit_render_path_list(array $paths, string $emptyText): void
             $detailParts[] = audit_human_file_size((int)$meta['size']);
             $detailParts[] = audit_dimensions_label($meta);
         } else {
-            $detailParts[] = 'file nuk u gjet në server';
+            $detailParts[] = 'skedari nuk u gjet në server';
         }
         ?>
         <article class="audit-item audit-info">
@@ -625,7 +625,7 @@ function audit_render_plain_path_list(array $paths, string $emptyText): void
         ?>
         <article class="audit-item audit-warning">
             <strong><?= e($path) ?></strong>
-            <p>Ky file nuk duhet të jetë në uploads. Lejohen vetëm imazhe dhe .htaccess mbrojtës.</p>
+            <p>Ky skedar nuk duhet të jetë në uploads. Lejohen vetëm imazhe dhe skedari mbrojtës .htaccess.</p>
         </article>
         <?php
     }
@@ -635,7 +635,7 @@ function audit_render_plain_path_list(array $paths, string $emptyText): void
 <html lang="sq">
 <head>
     <meta charset="utf-8">
-    <title>Audit Menu | <?= e(site_bar_name()) ?> Admin</title>
+    <title>Auditimi i menusë | <?= e(site_bar_name()) ?> Admin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-admin-header-actions-2">
     <style>
@@ -740,9 +740,9 @@ function audit_render_plain_path_list(array $paths, string $emptyText): void
         <?php render_admin_header($admin, 'dashboard'); ?>
 
         <main>
-            <h1 class="admin-title">Audit Menu</h1>
+            <h1 class="admin-title">Auditimi i menusë</h1>
             <p class="admin-muted">
-                Kontroll read-only për produktet, kategoritë, imazhet dhe problemet që mund të ndikojnë te menuja publike.
+                Kontroll diagnostik për produktet, kategoritë, imazhet dhe problemet që mund të ndikojnë te menuja publike.
             </p>
 
             <div class="audit-actions">
@@ -754,20 +754,20 @@ function audit_render_plain_path_list(array $paths, string $emptyText): void
             </div>
 
             <div class="audit-note">
-                Ky audit nuk ndryshon databazën dhe nuk fshin file. Produktet pranohen me raport portrait 0.55–0.82, minimum 600×1000 px; mbi 500 KB shfaqet si paralajmërim dhe mbi 800 KB si limit maksimal. Numërimi i produkteve jashtë koshit kontrollohet strikt 1…N.
+                Ky kontroll nuk ndryshon databazën dhe nuk fshin skedarë. Imazhet e produkteve duhet të jenë vertikale, me raport gjerësi/lartësi 0.55–0.82 dhe minimum 600×1000 px. Mbi 500 KB shfaqet paralajmërim dhe 800 KB është kufiri maksimal. Pozicionet e produkteve jashtë koshit kontrollohen që të jenë të vazhdueshme nga 1, pa boshllëqe ose përsëritje.
             </div>
 
             <section class="audit-summary">
-                <article class="stat-card"><small>Produkte total</small><strong><?= e($totalProducts) ?></strong></article>
+                <article class="stat-card"><small>Produkte gjithsej</small><strong><?= e($totalProducts) ?></strong></article>
                 <article class="stat-card"><small>Produkte jashtë koshit</small><strong><?= e($totalLiveProducts) ?></strong></article>
                 <article class="stat-card"><small>Produkte në kosh</small><strong><?= e($trashedProducts) ?></strong></article>
                 <article class="stat-card"><small>Kategori</small><strong><?= e($totalCategories) ?></strong></article>
                 <article class="stat-card"><small>Gabime kritike</small><strong><?= e($totalCritical) ?></strong></article>
                 <article class="stat-card"><small>Paralajmërime</small><strong><?= e($totalWarnings) ?></strong></article>
-                <article class="stat-card"><small>File DB që mungojnë</small><strong><?= e($missingDbFiles) ?></strong></article>
-                <article class="stat-card"><small>File të palidhura</small><strong><?= e(count($unusedImages)) ?></strong></article>
+                <article class="stat-card"><small>Skedarë të databazës që mungojnë</small><strong><?= e($missingDbFiles) ?></strong></article>
+                <article class="stat-card"><small>Skedarë të palidhur</small><strong><?= e(count($unusedImages)) ?></strong></article>
                 <article class="stat-card"><small>Imazhe në kosh</small><strong><?= e(count($trashImages)) ?></strong></article>
-                <article class="stat-card"><small>File të rrezikshme</small><strong><?= e(count($dangerousUploadFiles)) ?></strong></article>
+                <article class="stat-card"><small>Skedarë të rrezikshëm</small><strong><?= e(count($dangerousUploadFiles)) ?></strong></article>
                 <article class="stat-card"><small>Produkte aktive</small><strong><?= e($activeProducts) ?></strong></article>
                 <article class="stat-card"><small>Kategori aktive</small><strong><?= e($activeCategories) ?></strong></article>
             </section>
@@ -794,9 +794,9 @@ function audit_render_plain_path_list(array $paths, string $emptyText): void
             </section>
 
             <section class="audit-section">
-                <h2>File në server por nuk përdoren</h2>
+                <h2>Skedarë në server që nuk përdoren</h2>
                 <div class="audit-list">
-                    <?php audit_render_path_list($unusedImages, 'Nuk u gjetën file të palidhura në uploads/products ose uploads/categories.'); ?>
+                    <?php audit_render_path_list($unusedImages, 'Nuk u gjetën skedarë të palidhur në uploads/products ose uploads/categories.'); ?>
                 </div>
             </section>
 
@@ -808,9 +808,9 @@ function audit_render_plain_path_list(array $paths, string $emptyText): void
             </section>
 
             <section class="audit-section">
-                <h2>File të rrezikshme në uploads</h2>
+                <h2>Skedarë të rrezikshëm në uploads</h2>
                 <div class="audit-list">
-                    <?php audit_render_plain_path_list($dangerousUploadFiles, 'Nuk u gjetën file të rrezikshme në uploads.'); ?>
+                    <?php audit_render_plain_path_list($dangerousUploadFiles, 'Nuk u gjetën skedarë të rrezikshëm në uploads.'); ?>
                 </div>
             </section>
 

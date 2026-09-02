@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <main class="login-card">
         <h1>Vendos kodin</h1>
         <p>
-            Kontrollo email-et e rikuperimit dhe vendos kodin 6-shifror që sapo u dërgua.
+            Kontrollo email-in e rikuperimit dhe vendos kodin 6-shifror që u dërgua.
         </p>
 
         <?php if ($error !== ''): ?>

@@ -94,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $adminRow = current_admin_row($pdo, (int)$admin['id']);
 
             if ($adminRow === null) {
-                $errors[] = 'Llogaria e adminit nuk u gjet.';
+                $errors[] = 'Llogaria nuk u gjet.';
             } elseif ($currentPassword === '' || !password_verify($currentPassword, (string)$adminRow['password_hash'])) {
                 $errors[] = 'Password-i aktual nuk është i saktë.';
             } elseif (!filter_var($submittedRecoveryEmail, FILTER_VALIDATE_EMAIL)) {
@@ -154,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $currentPassword = (string)($_POST['current_password'] ?? '');
 
             if ($adminRow === null) {
-                $errors[] = 'Llogaria e adminit nuk u gjet.';
+                $errors[] = 'Llogaria nuk u gjet.';
             } elseif ($currentPassword === '' || !password_verify($currentPassword, (string)$adminRow['password_hash'])) {
                 $errors[] = 'Password-i aktual nuk është i saktë.';
             } elseif ($selectedAccountAction === 'username') {
@@ -246,7 +246,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <main>
             <h1 class="admin-title">Cilësimet</h1>
-            <p class="admin-muted">Menaxho cilësimet kryesore të menusë dhe llogarinë e adminit.</p>
+            <p class="admin-muted">Menaxho cilësimet kryesore të menusë dhe të llogarisë.</p>
 
             <?php foreach ($messages as $message): ?>
                 <div class="msg"><?= e($message) ?></div>
@@ -297,7 +297,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <section class="form-card">
                     <h2 class="settings-card-title">Rikuperimi i password-it</h2>
                     <p class="admin-muted">
-                        Vendos email-in ku administratori do të marrë kodin 6-shifror kur përdor “Harrove password-in?”.
+                        Vendos email-in ku do të dërgohet kodi 6-shifror për rikuperimin e password-it.
                     </p>
 
                     <form method="post">
@@ -316,7 +316,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     required
                                 >
                                 <div class="help-text">
-                                    Ky është email-i i administratorit për rikuperimin e llogarisë dhe mund të ndryshohet nga paneli.
+                                    Ky email përdoret për marrjen e kodeve të rikuperimit dhe mund të ndryshohet nga kjo faqe.
                                 </div>
                             </div>
 
@@ -377,7 +377,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </section>
 
                 <section class="form-card">
-                    <h2 class="settings-card-title">Llogaria e adminit</h2>
+                    <h2 class="settings-card-title">Llogaria</h2>
                     <p class="admin-muted">Zgjidh çfarë do të ndryshosh.</p>
 
                     <form method="post" id="adminAccountForm">

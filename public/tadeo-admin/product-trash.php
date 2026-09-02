@@ -155,8 +155,8 @@ $flash = product_trash_flash((string)($_GET['msg'] ?? ''));
                 <div class="trash-hero-grid">
                     <div>
                         <p class="admin-muted">
-                            Produktet në kosh nuk shfaqen në menunë publike dhe nuk mbajnë të rezervuar numrin e menusë. Pozicioni i vjetër ruhet veçmas që rikthimi ta vendosë përsëri aty kur është e mundur.
-                            Produktet që qëndrojnë këtu më shumë se <strong>30 ditë</strong> pastrohen automatikisht bashkë me imazhin e tyre kur ai nuk përdoret diku tjetër.
+                            Produktet në kosh nuk shfaqen në menunë publike. Pozicioni i mëparshëm ruhet për rikthim, ndërsa numërimi i menusë rirregullohet automatikisht.
+                            Produktet që qëndrojnë në kosh më shumë se <strong>30 ditë</strong> fshihen automatikisht bashkë me imazhin e tyre kur ai nuk përdoret diku tjetër.
                         </p>
                     </div>
 
@@ -170,7 +170,7 @@ $flash = product_trash_flash((string)($_GET['msg'] ?? ''));
                 <?php endif; ?>
 
                 <?php if ($autoPurgeError): ?>
-                    <div class="error">Cleanup-i automatik nuk u përfundua plotësisht. Asnjë dështim cleanup-i nuk duhet të prishë menunë; kontrollo Menu Audit për file të palidhura.</div>
+                    <div class="error">Pastrimi automatik nuk u përfundua plotësisht. Kontrollo “Auditimi i menusë” për skedarë të palidhur ose probleme të tjera.</div>
                 <?php endif; ?>
 
                 <?php if ($flash !== ''): ?>
@@ -215,7 +215,7 @@ $flash = product_trash_flash((string)($_GET['msg'] ?? ''));
                             </div>
 
                             <div class="trash-card-note">
-                                Rikthimi e kthen produktin si të fshehur. Produktet e tjera zhvendosen automatikisht që numërimi të mbetet strikt 1…N.
+                                Produkti rikthehet si i fshehur dhe vendoset në pozicionin e ruajtur kur ai është i disponueshëm. Menuja rirenditet automatikisht.
                             </div>
 
                             <div class="product-actions">
