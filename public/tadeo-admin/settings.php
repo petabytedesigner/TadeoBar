@@ -249,6 +249,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             $pdo->commit();
                             refresh_current_admin_session_version($pdo, (int)$admin['id']);
+                            recovery_email_change_cancel();
+                            $pendingRecoveryEmail = null;
 
                             recovery_send_security_notice(
                                 recovery_recipient_emails($pdo),
