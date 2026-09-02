@@ -34,7 +34,7 @@ function image_trash_flash(string $msg): string
     return match ($msg) {
         'restored' => 'Imazhi u rikthye me sukses.',
         'purged' => 'Imazhi u fshi përgjithmonë.',
-        'restore_conflict' => 'Imazhi nuk u rikthye sepse ekziston një file tjetër me të njëjtin emër.',
+        'restore_conflict' => 'Imazhi nuk u rikthye sepse ekziston një skedar tjetër me të njëjtin emër.',
         'invalid' => 'Kërkesa nuk është e vlefshme.',
         'csrf' => 'Kontrolli i sigurisë dështoi. Rifresko faqen dhe provo përsëri.',
         'error' => 'Veprimi nuk u krye. Provo përsëri.',
@@ -159,7 +159,7 @@ $flash = image_trash_flash((string)($_GET['msg'] ?? ''));
                 <div class="trash-hero-grid">
                     <p class="admin-muted">
                         Imazhet në kosh nuk përdoren nga menuja. Mund t’i rikthesh ose t’i fshish përgjithmonë.
-                        Pas 30 ditësh pastrohen automatikisht nga cleanup-i i faqes kryesore.
+                        Pas 30 ditësh fshihen automatikisht nga sistemi i pastrimit.
                     </p>
 
                     <div class="trash-count" title="Imazhe në kosh">
@@ -185,7 +185,7 @@ $flash = image_trash_flash((string)($_GET['msg'] ?? ''));
                     <?php foreach ($images as $image): ?>
                         <article class="product-admin-card">
                             <div class="product-admin-top">
-                                <div class="product-number">File</div>
+                                <div class="product-number">Skedar</div>
                                 <span class="badge badge-hidden">Në kosh</span>
                             </div>
 
@@ -193,7 +193,7 @@ $flash = image_trash_flash((string)($_GET['msg'] ?? ''));
                                 <?php if (is_file(dirname(__DIR__) . '/' . $image['trash_path'])): ?>
                                     <img src="/<?= e($image['trash_path']) ?>" alt="Imazh në kosh">
                                 <?php else: ?>
-                                    <div class="admin-muted" style="padding:16px">File mungon në server.</div>
+                                    <div class="admin-muted" style="padding:16px">Skedari mungon në server.</div>
                                 <?php endif; ?>
                             </div>
 
