@@ -133,9 +133,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <div>
-                        <label>Emoji fallback</label>
+                        <label>Emoji rezervë</label>
                         <input name="icon" value="<?= e($category['icon']) ?>">
-                        <div class="help-text">Përdoret vetëm nëse nuk ka imazh kategorie.</div>
+                        <div class="help-text">Shfaqet kur kategoria nuk ka imazh.</div>
                     </div>
 
                     <div>
@@ -146,7 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="full">
                         <label>Ngarko / zëvendëso imazhin e kategorisë</label>
                         <input name="icon_image_file" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
-                        <div class="help-text">Nëse nuk zgjedh imazh të ri, imazhi aktual mbetet. Lejohen JPG, PNG ose WEBP deri 10 MB; ruhet automatikisht si WEBP i optimizuar. Për kategoritë nuk ka raport të detyruar.</div>
+                        <div class="help-text">Nëse nuk zgjedh imazh të ri, ruhet imazhi ekzistues. Lejohen JPG, PNG ose WEBP deri në 10 MB. Imazhi ruhet automatikisht si WEBP i optimizuar dhe nuk kërkohet një raport i caktuar.</div>
 
                         <?php if (!empty($category['icon_image_path'])): ?>
                             <div class="current-image category-current-image">
