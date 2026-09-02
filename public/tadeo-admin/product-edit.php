@@ -263,7 +263,7 @@ $currentImageUrl = !empty($product['image_path']) ? '/' . ltrim((string)$product
     </div>
 
     <script src="/assets/vendor/filerobot-image-editor/filerobot-image-editor.min.js?v=4.9.1" defer></script>
-    <script src="/assets/js/product-image-preview.js?v=20260901-2" defer></script>
-    <script src="/assets/js/product-image-editor.js?v=20260901-1" defer></script>
+    <script src="/assets/js/product-image-preview.js?v=20260902-copy-1" defer></script>
+    <script src="/assets/js/product-image-editor.js?v=20260902-copy-1" defer></script>
 </body>
 </html>
