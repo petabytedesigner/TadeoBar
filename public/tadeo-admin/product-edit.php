@@ -140,9 +140,9 @@ $currentImageUrl = !empty($product['image_path']) ? '/' . ltrim((string)$product
 
                 <div class="form-grid">
                     <div>
-                        <label>Numri i produktit</label>
+                        <label>Pozicioni në menu</label>
                         <input name="menu_number" type="number" min="1" max="<?= e($maxMenuPosition) ?>" value="<?= e($product['menu_number']) ?>" required>
-                        <div class="help-text">Pozicioni duhet të jetë 1–<?= e($maxMenuPosition) ?>. Kur ndryshon numrin, produktet ndërmjet zhvendosen automatikisht dhe menuja mbetet 1…N.</div>
+                        <div class="help-text">Zgjidh pozicionin e produktit në menu. Kur pozicioni ndryshon, produktet e tjera rirenditen automatikisht.</div>
                     </div>
 
                     <div>
@@ -196,7 +196,7 @@ $currentImageUrl = !empty($product['image_path']) ? '/' . ltrim((string)$product
                                 </label>
                             </div>
                             <div class="help-text">
-                                AUTO përdor kontrollin dhe optimizimin aktual. EDITO mund të përpunojë një imazh të ri ose imazhin aktual me crop, zoom, rotate, flip, përmirësime, filtra, resize, shënime dhe watermark.
+                                AUTO kontrollon dhe optimizon automatikisht imazhin gjatë ruajtjes. EDITO mund të përpunojë imazhin e zgjedhur ose imazhin ekzistues para ruajtjes. Editori përfshin prerje, zmadhim, rrotullim, pasqyrim, përmirësime, filtra, ndryshim përmasash, shënime dhe watermark.
                             </div>
                         </div>
 
@@ -207,31 +207,31 @@ $currentImageUrl = !empty($product['image_path']) ? '/' . ltrim((string)$product
                             data-product-image-input
                             data-preview-target="productImagePreview"
                         >
-                        <div class="help-text">Nëse nuk zgjedh imazh të ri, imazhi aktual mbetet i pandryshuar. Imazhi final duhet të jetë portrait me raport W/H 0.55–0.82 dhe të paktën 600×1000 px. Serveri e ruan automatikisht si WEBP të optimizuar.</div>
+                        <div class="help-text">Nëse nuk zgjedh imazh të ri, ruhet imazhi ekzistues. Imazhi i produktit duhet të jetë vertikal, me raport gjerësi/lartësi 0.55–0.82 dhe të paktën 600×1000 px. Gjatë ruajtjes imazhi optimizohet automatikisht në WEBP.</div>
 
                         <div class="product-image-preview" id="productImagePreview" aria-live="polite" hidden>
                             <div class="product-image-preview-grid">
                                 <div class="product-image-preview-media">
-                                    <img data-preview-image alt="Preview i imazhit">
+                                    <img data-preview-image alt="Pamja paraprake e imazhit">
                                 </div>
                                 <div class="product-image-preview-details">
                                     <div class="product-image-preview-status is-loading" data-preview-status>Po kontrollohet imazhi…</div>
                                     <button type="button" class="btn btn-secondary product-image-edit-now" data-edit-now hidden>Editoje tani</button>
                                     <dl class="product-image-preview-meta">
-                                        <div><dt>File</dt><dd data-preview-name>—</dd></div>
-                                        <div><dt>Format</dt><dd data-preview-type>—</dd></div>
-                                        <div><dt>Dimensione</dt><dd data-preview-dimensions>—</dd></div>
-                                        <div><dt>Ratio W/H</dt><dd data-preview-ratio>—</dd></div>
-                                        <div><dt>Madhësia burim</dt><dd data-preview-size>—</dd></div>
+                                        <div><dt>Skedari</dt><dd data-preview-name>—</dd></div>
+                                        <div><dt>Formati</dt><dd data-preview-type>—</dd></div>
+                                        <div><dt>Dimensionet</dt><dd data-preview-dimensions>—</dd></div>
+                                        <div><dt>Raporti gjerësi/lartësi</dt><dd data-preview-ratio>—</dd></div>
+                                        <div><dt>Madhësia</dt><dd data-preview-size>—</dd></div>
                                     </dl>
-                                    <p class="product-image-preview-note">Preview kontrollon file-in që do të dërgohet. Serveri bën optimizimin final WEBP dhe validimin përfundimtar gjatë ruajtjes.</p>
+                                    <p class="product-image-preview-note">Pamja paraprake kontrollon imazhin para ruajtjes. Gjatë ruajtjes kryhet validimi përfundimtar dhe optimizimi automatik në WEBP.</p>
                                 </div>
                             </div>
                         </div>
 
                         <div class="product-image-editor-actions" data-editor-actions hidden>
                             <button type="button" class="btn btn-secondary" data-open-image-editor>
-                                <?= $currentImageUrl !== '' ? 'Hap editorin / edito imazhin aktual' : 'Hap / rihap editorin' ?>
+                                <?= $currentImageUrl !== '' ? 'Hap editorin / edito imazhin ekzistues' : 'Hap / rihap editorin' ?>
                             </button>
                         </div>
                         <div class="product-image-editor-notice" data-editor-notice hidden></div>
