@@ -9,6 +9,9 @@ require_once __DIR__ . '/../includes/password_recovery.php';
 $admin = require_admin();
 $pdo = db();
 ensure_admin_session_version_schema($pdo);
+if (password_reset_table_exists($pdo)) {
+    password_reset_ensure_schema($pdo);
+}
 
 function setting_get(PDO $pdo, string $key, string $default = ''): string
 {
@@ -237,7 +240,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
 
                             if (password_reset_table_exists($pdo)) {
-                                password_reset_ensure_schema($pdo);
                                 $stmt = $pdo->prepare(
                                     'UPDATE password_reset_codes SET used_at = NOW() '
                                     . 'WHERE admin_id = ? AND used_at IS NULL'
