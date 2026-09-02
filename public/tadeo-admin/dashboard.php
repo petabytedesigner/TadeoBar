@@ -23,13 +23,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'run_c
             $deletedImages = trash_cleanup_images($pdo);
             trash_cleanup_mark_run();
 
-            $cleanupMessage = 'Cleanup u krye. Produkte të fshira përgjithmonë: '
+            $cleanupMessage = 'Pastrimi u krye. Produkte të fshira përgjithmonë: '
                 . $deletedProducts
                 . '. Imazhe të fshira përgjithmonë: '
                 . $deletedImages
                 . '.';
         } catch (Throwable $e) {
-            $cleanupError = 'Cleanup nuk u krye dot. Provo përsëri ose kontrollo serverin.';
+            $cleanupError = 'Pastrimi nuk u krye. Provo përsëri ose kontrollo serverin.';
         }
     }
 }
@@ -263,15 +263,15 @@ $last7 = dashboard_visit_count_between($pdo, $last7StartDate, $todayDate);
                         <a class="btn btn-secondary" href="/tadeo-admin/analytics.php">Analitika</a>
                         <a class="btn btn-secondary" href="/tadeo-admin/settings.php">Cilësimet</a>
 
-                        <form class="dashboard-cleanup-form" method="post" onsubmit="return confirm('Cleanup do të fshijë përgjithmonë vetëm produkte dhe imazhe që kanë mbi 30 ditë në kosh. Të vazhdoj?');">
+                        <form class="dashboard-cleanup-form" method="post" onsubmit="return confirm('Pastrimi do të fshijë përgjithmonë vetëm produktet dhe imazhet që kanë mbi 30 ditë në kosh. Të vazhdoj?');">
                             <?= csrf_field() ?>
                             <input type="hidden" name="action" value="run_cleanup">
-                            <button class="btn btn-secondary" type="submit">Run cleanup now</button>
+                            <button class="btn btn-secondary" type="submit">Pastro koshin tani</button>
                         </form>
                     </div>
 
                     <div class="dashboard-note">
-                        Cleanup manual përdor të njëjtin rregull 30-ditor si cleanup automatik. Produktet dhe imazhet më të reja në kosh nuk preken.
+                        Pastrimi manual përdor të njëjtin rregull 30-ditor si pastrimi automatik. Produktet dhe imazhet më të reja në kosh nuk preken.
                     </div>
                 </article>
             </section>
