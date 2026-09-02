@@ -132,7 +132,7 @@ Ky migration:
 
 Admin Products përdor edhe `public/includes/product_ordering.php`, i cili verifikon/upgrade-on kolonat e nevojshme dhe vetë-rregullon një instalim legacy para mutimeve të produkteve.
 
-Guard-i gjithashtu krijon automatikisht `security_ip_guard` në runtime nëse tabela mungon, ndërsa `recovery-setup.php` krijon automatikisht `password_reset_codes` nëse ajo mungon.
+Guard-i krijon automatikisht `security_ip_guard` në runtime nëse tabela mungon. Password-recovery helper-i siguron gjithashtu strukturën bazë të `password_reset_codes`; migration-et dhe `database/schema.sql` mbeten burimi i plotë për schema-n dhe indexet.
 
 ### Fallback pa full DB backup
 
@@ -143,7 +143,7 @@ Nëse nuk ke full database export:
 3. Importo `database/schema.sql`.
 4. Krijo një admin me password hash të ri.
 5. Hyr në Admin dhe vendos Settings + WiFi.
-6. Ekzekuto one-time Recovery Setup.
+6. Rikrijo `public/includes/recovery.local.php` nga kopja private e konfigurimit dhe testo Forgot Password end-to-end.
 
 `database/seed/tadeobar-menu.sql` është vetëm sanitized snapshot i 17 majit 2026 dhe jo menuja finale live.
 
@@ -160,41 +160,13 @@ INSERT INTO admins (username, password_hash, is_active)
 VALUES ('admin', 'HASH_I_GJENERUAR', 1);
 ```
 
-## 7. One-time Recovery Setup
+## 7. Konfigurimi privat i recovery
 
-Pasi kodi është deploy-uar dhe admin login funksionon, hyr si admin dhe hap:
+`public/tadeo-admin/recovery-setup.php` ishte faqe autentikuese vetëm për konfigurimin fillestar dhe është hequr pasi Forgot Password u verifikua me sukses në instalimin live.
 
-```text
-/tadeo-admin/recovery-setup.php
-```
+Në një restore të ri, `public/includes/recovery.local.php` duhet të rikthehet ose të rikrijohet privatisht jashtë Git. Ai përmban SMTP secret-et dhe protected recovery config, ngarkohet automatikisht nga aplikacioni dhe është i përjashtuar nga Git. `public/includes/.htaccess` bllokon aksesin HTTP në gjithë dosjen `includes`.
 
-Faqja kërkon:
-
-- Gmail sender email
-- Google App Password 16-karakterësh
-- protected recovery email
-- recovery email të dytë
-- kodin privat të mbrojtjes + konfirmimin
-- password-in aktual të adminit
-
-Kur shtypet `Testo dhe ruaj konfigurimin`, faqja:
-
-1. Verifikon password-in aktual të adminit dhe input-et.
-2. Siguron që tabela `password_reset_codes` ekziston.
-3. Kontrollon që `public/includes/` është writable nga PHP.
-4. Lidhet me `smtp.gmail.com:587` me STARTTLS.
-5. Autentikohet me Gmail + Google App Password.
-6. Dërgon email test te protected recovery email.
-7. Dërgon email test te recovery email i dytë.
-8. Gjeneron `password_hash()` për kodin privat.
-9. Ruan recovery email-in e dytë në DB.
-10. Krijon privatisht `public/includes/recovery.local.php`.
-
-Nëse një nga testet dështon, konfigurimi final nuk ruhet. App Password-i dhe kodi privat nuk ruhen në DB.
-
-`recovery.local.php` përmban SMTP secret-et dhe protected recovery config. Ai ngarkohet automatikisht nga aplikacioni, është i përjashtuar nga Git dhe `public/includes/.htaccess` bllokon aksesin HTTP në gjithë dosjen `includes`.
-
-Pas setup-it të suksesshëm, faqja refuzon ta mbishkruajë konfigurimin ekzistues. Pas testit live, `recovery-setup.php` duhet fshirë nga serveri dhe repo.
+Pas rikthimit të konfigurimit privat, verifiko Forgot Password end-to-end para se instalimi të konsiderohet i rikthyer plotësisht.
 
 ## 8. Password recovery
 
@@ -203,20 +175,20 @@ Rrjedha finale është:
 1. Login → `Harrove password-in?`
 2. Konfirmo `Vazhdo` pa shkruar email ose username.
 3. Gjenerohet kod random 6-shifror.
-4. I njëjti kod dërgohet te të dy recovery email-et aktive.
+4. I njëjti kod dërgohet te recovery destination-et aktive.
 5. Kodi skadon pas 10 minutash dhe ruhet vetëm si hash.
 6. Pas verifikimit caktohet password-i i ri.
 
-Mbrojtjet përfshijnë CSRF, rate limiting, maksimum 5 tentativa për kod, single-use reset code dhe kod privat për aktivizim/çaktivizim të protected recovery email.
+Mbrojtjet përfshijnë CSRF, rate limiting, maksimum 10 tentativa për kod, single-use reset code, resend cooldown, quota të dërgesave të suksesshme dhe revokim të sesioneve të vjetra pas reset-it.
 
 ## 9. Brute-force / IP guard
 
 Login-i ka dy nivele mbrojtjeje server-side:
 
-- 5 tentativa të dështuara për të njëjtin username + IP brenda 10 minutave aktivizojnë soft guard-in ekzistues;
+- 5 tentativa të dështuara për të njëjtin account të zgjidhur + IP brenda 10 minutave aktivizojnë soft guard-in;
 - tentativa me kredenciale të pavlefshme vazhdon të regjistrohet edhe gjatë soft guard-it, ndërsa kredencialet korrekte nuk rrisin hard counter-in;
 - 15 login-e të dështuara nga e njëjta IP brenda dritares 24-orëshe aktivizojnë hard block 24 orë;
-- counter-i i hard guard është IP-only, pra ndryshimi i username-it nuk e anashkalon;
+- counter-i i hard guard është IP-only, pra ndryshimi i identifier-it nuk e anashkalon;
 - login i suksesshëm reseton counter-in e hard guard;
 - ruhet vetëm SHA-256 hash i IP-së, jo IP raw;
 - IP e bllokuar merr përgjigje neutrale `404 Not Found` dhe nuk i shfaqet arsyeja, pragu ose koha e bllokimit;
@@ -249,7 +221,7 @@ Script-i ngarkon `public/ -> /htdocs/` dhe ruan:
 - product/category uploads
 - trash uploads
 - `includes/config.local.php`
-- `includes/recovery.local.php` të gjeneruar në server
+- `includes/recovery.local.php` të serverit
 
 Kjo do të thotë që konfigurimet private të serverit nuk fshihen nga deploy-et pasuese.
 
@@ -267,11 +239,11 @@ Pas restore kontrollo `/htdocs/.htaccess` dhe `/htdocs/includes/.htaccess`. Dosj
 6. Kontrollo dashboard, Products, Categories, Images, WiFi, Analytics dhe Settings.
 7. Në Products verifiko që numrat jashtë koshit janë strikt `1..N`.
 8. Testo një produkt prove: çoje në kosh dhe verifiko që numrat pas tij kompaktohen pa gap; riktheje dhe verifiko që futet përsëri në rend pa duplicate.
-9. Ekzekuto Recovery Setup dhe konfirmo që të dy email-et test mbërrijnë.
-10. Testo Forgot Password dhe konfirmo të njëjtin kod në të dy recovery email-et.
-11. Testo kod të gabuar, skadimin dhe ndryshimin e password-it.
-12. Kontrollo protected recovery enable/disable.
-13. Verifiko IP guard me dy IP/network-e të ndryshme para se të bësh testin e plotë të 15 tentativave.
+9. Verifiko që `recovery.local.php` është rikthyer privatisht dhe nuk është tracked në Git.
+10. Testo Forgot Password dhe konfirmo marrjen e kodit 6-shifror.
+11. Testo një kod të gabuar në mënyrë të kontrolluar dhe pastaj reset-in real të password-it.
+12. Verifiko që login me username dhe email-in e verifikuar funksionon, ndërsa protected recovery email nuk përdoret si login.
+13. Verifiko IP guard me dy IP/network-e të ndryshme vetëm nëse testi mund të bëhet pa bllokuar rrjetin kryesor të administrimit.
 14. Hap `menu-audit.php` dhe kontrollo problemet kritike.
 15. Testo error page dinamike.
 16. Testo upload-in vetëm kur ke backup.
@@ -304,7 +276,7 @@ Restore konsiderohet i përfunduar vetëm kur:
 - produktet jashtë koshit kanë numërim strikt `1..N`
 - trash/restore ruajnë invariantin e numërimit
 - imazhet shfaqen
-- Recovery Setup kalon testet
+- konfigurimi privat i recovery është rikthyer
 - Forgot Password punon end-to-end
 - IP guard është verifikuar pa ndikuar IP të tjera
 - `menu-audit.php` nuk raporton probleme kritike
