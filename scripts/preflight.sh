@@ -134,6 +134,9 @@ grep -q 'recovery_email_change_begin' public/tadeo-admin/settings.php \
   || fail "Settings does not require verification before changing the login/recovery email"
 grep -q 'recovery_email_change_verify' public/tadeo-admin/settings.php \
   || fail "Settings is missing login/recovery email verification"
+pending_email_cancel_calls=$(grep -Fc 'recovery_email_change_cancel();' public/tadeo-admin/settings.php || true)
+[ "$pending_email_cancel_calls" -ge 2 ] \
+  || fail "Password changes do not cancel pending login/recovery-email verification"
 ok "Authentication and password recovery hardening is present"
 
 grep -q 'sha256sum' scripts/deploy.sh \
