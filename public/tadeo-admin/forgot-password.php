@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body class="admin-login-page">
     <main class="login-card">
         <h1>Rikupero password-in</h1>
-        <p>Do të dërgojmë një kod verifikimi 6-shifror në email-in e rikuperimit:</p>
+        <p>Një kod verifikimi 6-shifror do të dërgohet në email-in e rikuperimit:</p>
 
         <?php if ($maskedRecoveryEmail !== ''): ?>
             <div class="msg"><strong><?= e($maskedRecoveryEmail) ?></strong></div>
