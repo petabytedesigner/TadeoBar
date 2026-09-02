@@ -62,22 +62,22 @@
         const canEdit = width >= MIN_WIDTH && height >= MIN_HEIGHT;
 
         if (file.type && !ALLOWED_MIMES.includes(file.type)) {
-            setStatus(root, 'error', 'Error: lejohet vetëm JPG, PNG ose WEBP.');
+            setStatus(root, 'error', 'Gabim: lejohet vetëm JPG, PNG ose WEBP.');
             return { valid: false, typeInvalid: true, ratioInvalid: false, canEdit: false };
         }
 
         if (file.size > SOURCE_MAX_BYTES) {
-            setStatus(root, 'error', 'Error: file-i burim kalon limitin 10 MB.');
+            setStatus(root, 'error', 'Gabim: skedari burim kalon kufirin 10 MB.');
             return { valid: false, sizeInvalid: true, ratioInvalid: false, canEdit: false };
         }
 
         if (width < MIN_WIDTH || height < MIN_HEIGHT) {
-            setStatus(root, 'error', 'Error: minimumi është 600×1000 px.');
+            setStatus(root, 'error', 'Gabim: përmasat minimale janë 600×1000 px.');
             return { valid: false, dimensionsInvalid: true, ratioInvalid: false, canEdit: false };
         }
 
         if (ratio < RATIO_MIN || ratio > RATIO_MAX) {
-            setStatus(root, 'error', 'Error: raporti duhet të jetë portrait, width/height 0.55–0.82.');
+            setStatus(root, 'error', 'Gabim: imazhi duhet të jetë vertikal, me raport gjerësi/lartësi 0.55–0.82.');
             return { valid: false, ratioInvalid: true, canEdit: canEdit };
         }
 
@@ -85,12 +85,12 @@
             setStatus(
                 root,
                 'warning',
-                'Warning: burimi është mbi 500 KB. Serveri do ta optimizojë; limiti final WEBP është 800 KB.'
+                'Kujdes: imazhi burim është mbi 500 KB. Gjatë ruajtjes do të optimizohet; kufiri final WEBP është 800 KB.'
             );
             return { valid: true, warning: true, ratioInvalid: false, canEdit: true };
         }
 
-        setStatus(root, 'ok', 'OK: dimensionet, raporti dhe madhësia e burimit janë në rregull.');
+        setStatus(root, 'ok', 'Në rregull: dimensionet, raporti dhe madhësia e skedarit janë të vlefshme.');
         return { valid: true, ratioInvalid: false, canEdit: true };
     }
 
@@ -128,7 +128,7 @@
             if (file.type && !ALLOWED_MIMES.includes(file.type)) {
                 setText(root, '[data-preview-dimensions]', '—');
                 setText(root, '[data-preview-ratio]', '—');
-                setStatus(root, 'error', 'Error: lejohet vetëm JPG, PNG ose WEBP.');
+                setStatus(root, 'error', 'Gabim: lejohet vetëm JPG, PNG ose WEBP.');
                 emitValidation(input, { valid: false, typeInvalid: true, ratioInvalid: false, canEdit: false });
                 return;
             }
@@ -144,7 +144,7 @@
 
                 if (previewImage) {
                     previewImage.src = objectUrl;
-                    previewImage.alt = file.name || 'Preview i imazhit';
+                    previewImage.alt = file.name || 'Pamja paraprake e imazhit';
                 }
 
                 setText(root, '[data-preview-dimensions]', width + '×' + height + ' px');
@@ -160,7 +160,7 @@
             probe.onerror = function () {
                 setText(root, '[data-preview-dimensions]', '—');
                 setText(root, '[data-preview-ratio]', '—');
-                setStatus(root, 'error', 'Error: imazhi nuk u lexua dot nga browser-i.');
+                setStatus(root, 'error', 'Gabim: imazhi nuk u lexua dot nga shfletuesi.');
                 emitValidation(input, { valid: false, unreadable: true, ratioInvalid: false, canEdit: false });
             };
 

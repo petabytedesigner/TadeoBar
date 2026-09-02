@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($data['slug'] === '' || $data['name_sq'] === '' || $data['name_en'] === '' || $data['sort_order'] <= 0) {
             $error = 'Plotëso saktë të gjitha fushat e detyrueshme.';
         } elseif (!preg_match('/^[a-z0-9-]+$/', $data['slug'])) {
-            $error = 'Slug duhet të ketë vetëm shkronja të vogla, numra dhe minus.';
+            $error = 'Identifikuesi i URL-së duhet të ketë vetëm shkronja të vogla, numra dhe minus.';
         } else {
             try {
                 $uploadPlan = prepare_category_icon_upload(
@@ -128,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <div>
-                        <label>Slug</label>
+                        <label>Identifikuesi i URL-së (slug)</label>
                         <input name="slug" value="<?= e($category['slug']) ?>" required>
                     </div>
 
@@ -144,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <div class="full">
-                        <label>Ngarko / zëvendëso imazhin e kategorisë</label>
+                        <label>Ngarko ose zëvendëso imazhin e kategorisë</label>
                         <input name="icon_image_file" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
                         <div class="help-text">Nëse nuk zgjedh imazh të ri, ruhet imazhi ekzistues. Lejohen JPG, PNG ose WEBP deri në 10 MB. Imazhi ruhet automatikisht si WEBP i optimizuar dhe nuk kërkohet një raport i caktuar.</div>
 

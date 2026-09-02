@@ -181,7 +181,7 @@ $currentImageUrl = !empty($product['image_path']) ? '/' . ltrim((string)$product
                         data-product-image-editor-root
                         data-existing-image="<?= e($currentImageUrl) ?>"
                     >
-                        <label>Ngarko / zëvendëso imazhin</label>
+                        <label>Ngarko ose zëvendëso imazhin</label>
 
                         <div class="product-image-mode">
                             <span class="product-image-mode-title">Mënyra e imazhit</span>
@@ -196,7 +196,7 @@ $currentImageUrl = !empty($product['image_path']) ? '/' . ltrim((string)$product
                                 </label>
                             </div>
                             <div class="help-text">
-                                AUTO kontrollon dhe optimizon automatikisht imazhin gjatë ruajtjes. EDITO mund të përpunojë imazhin e zgjedhur ose imazhin ekzistues para ruajtjes. Editori përfshin prerje, zmadhim, rrotullim, pasqyrim, përmirësime, filtra, ndryshim përmasash, shënime dhe watermark.
+                                AUTO kontrollon dhe optimizon automatikisht imazhin gjatë ruajtjes. EDITO mund të përpunojë imazhin e zgjedhur ose imazhin ekzistues para ruajtjes. Editori përfshin prerje, zmadhim, rrotullim, pasqyrim, përmirësime, filtra, ndryshim përmasash, shënime dhe shenjë uji.
                             </div>
                         </div>
 
@@ -231,7 +231,7 @@ $currentImageUrl = !empty($product['image_path']) ? '/' . ltrim((string)$product
 
                         <div class="product-image-editor-actions" data-editor-actions hidden>
                             <button type="button" class="btn btn-secondary" data-open-image-editor>
-                                <?= $currentImageUrl !== '' ? 'Hap editorin / edito imazhin ekzistues' : 'Hap / rihap editorin' ?>
+                                <?= $currentImageUrl !== '' ? 'Hap editorin për imazhin ekzistues' : 'Hap ose rihap editorin' ?>
                             </button>
                         </div>
                         <div class="product-image-editor-notice" data-editor-notice hidden></div>
@@ -263,7 +263,7 @@ $currentImageUrl = !empty($product['image_path']) ? '/' . ltrim((string)$product
     </div>
 
     <script src="/assets/vendor/filerobot-image-editor/filerobot-image-editor.min.js?v=4.9.1" defer></script>
-    <script src="/assets/js/product-image-preview.js?v=20260901-2" defer></script>
-    <script src="/assets/js/product-image-editor.js?v=20260901-1" defer></script>
+    <script src="/assets/js/product-image-preview.js?v=20260902-copy-1" defer></script>
+    <script src="/assets/js/product-image-editor.js?v=20260902-copy-1" defer></script>
 </body>
 </html>

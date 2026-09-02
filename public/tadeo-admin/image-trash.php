@@ -201,7 +201,7 @@ $flash = image_trash_flash((string)($_GET['msg'] ?? ''));
 
                             <?php if (!empty($image['name_sq'])): ?>
                                 <div class="trash-owner">
-                                    Më parë:
+                                    Lidhja e mëparshme:
                                     <?php if (($image['owner_type'] ?? '') === 'product'): ?>
                                         #<?= e($image['menu_number']) ?> —
                                     <?php endif; ?>
@@ -209,12 +209,12 @@ $flash = image_trash_flash((string)($_GET['msg'] ?? ''));
                                 </div>
                             <?php endif; ?>
 
-                            <div class="media-path">Origjinal: <?= e($image['original_path']) ?></div>
-                            <div class="media-path">Në kosh: <?= e($image['trash_path']) ?></div>
+                            <div class="media-path">Shtegu origjinal: <?= e($image['original_path']) ?></div>
+                            <div class="media-path">Shtegu në kosh: <?= e($image['trash_path']) ?></div>
 
                             <div class="trash-meta">
-                                Fshirë më: <?= e($image['deleted_at']) ?><br>
-                                Ditë deri në fshirje: <?= e($image['days_left']) ?>
+                                Në kosh që prej: <?= e($image['deleted_at']) ?><br>
+                                Ditë deri në fshirjen automatike: <?= e($image['days_left']) ?>
                             </div>
 
                             <div class="product-actions">

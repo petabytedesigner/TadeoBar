@@ -9,7 +9,7 @@ require_admin();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !csrf_verify()) {
     http_response_code(403);
-    exit('Forbidden.');
+    exit('Kërkesa nuk lejohet.');
 }
 
 $id = (int)($_POST['id'] ?? 0);

@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($data['slug'] === '' || $data['name_sq'] === '' || $data['name_en'] === '' || $data['sort_order'] <= 0) {
             $error = 'Plotëso saktë të gjitha fushat e detyrueshme.';
         } elseif (!preg_match('/^[a-z0-9-]+$/', $data['slug'])) {
-            $error = 'Slug duhet të ketë vetëm shkronja të vogla, numra dhe minus.';
+            $error = 'Identifikuesi i URL-së duhet të ketë vetëm shkronja të vogla, numra dhe minus.';
         } else {
             try {
                 $uploadPlan = prepare_category_icon_upload(
@@ -111,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <div>
-                        <label>Slug</label>
+                        <label>Identifikuesi i URL-së (slug)</label>
                         <input name="slug" value="<?= e($data['slug']) ?>" placeholder="cold-drinks" required>
                         <div class="help-text">Përdor vetëm shkronja të vogla, numra dhe minus.</div>
                     </div>

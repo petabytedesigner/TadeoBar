@@ -36,14 +36,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 record_login_attempt($identifier, false, $admin);
             }
 
-            $error = 'Username/email ose password i gabuar.';
+            $error = 'Username-i, email-i ose password-i nuk është i saktë.';
         } elseif ($credentialsValid) {
             record_login_attempt($identifier, true, $admin);
             login_admin($admin);
             redirect('/tadeo-admin/dashboard.php');
         } else {
             record_login_attempt($identifier, false, $admin);
-            $error = 'Username/email ose password i gabuar.';
+            $error = 'Username-i, email-i ose password-i nuk është i saktë.';
         }
     }
 }

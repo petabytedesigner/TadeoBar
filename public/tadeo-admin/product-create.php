@@ -168,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 </label>
                             </div>
                             <div class="help-text">
-                                AUTO kontrollon dhe optimizon automatikisht imazhin gjatë ruajtjes. EDITO hap editorin para ruajtjes për prerje, zmadhim, rrotullim, pasqyrim, përmirësime, filtra, ndryshim përmasash, shënime dhe watermark.
+                                AUTO kontrollon dhe optimizon automatikisht imazhin gjatë ruajtjes. EDITO hap editorin para ruajtjes për prerje, zmadhim, rrotullim, pasqyrim, përmirësime, filtra, ndryshim përmasash, shënime dhe shenjë uji.
                             </div>
                         </div>
 
@@ -202,7 +202,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
 
                         <div class="product-image-editor-actions" data-editor-actions hidden>
-                            <button type="button" class="btn btn-secondary" data-open-image-editor>Hap / rihap editorin</button>
+                            <button type="button" class="btn btn-secondary" data-open-image-editor>Hap ose rihap editorin</button>
                         </div>
                         <div class="product-image-editor-notice" data-editor-notice hidden></div>
                     </div>
@@ -227,7 +227,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <script src="/assets/vendor/filerobot-image-editor/filerobot-image-editor.min.js?v=4.9.1" defer></script>
-    <script src="/assets/js/product-image-preview.js?v=20260901-2" defer></script>
-    <script src="/assets/js/product-image-editor.js?v=20260901-1" defer></script>
+    <script src="/assets/js/product-image-preview.js?v=20260902-copy-1" defer></script>
+    <script src="/assets/js/product-image-editor.js?v=20260902-copy-1" defer></script>
 </body>
 </html>

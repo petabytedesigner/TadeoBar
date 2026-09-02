@@ -76,12 +76,12 @@ function recovery_setup_config_contents(
 function recovery_setup_write_private_file(string $targetPath, string $contents): void
 {
     if (file_exists($targetPath)) {
-        throw new RuntimeException('Recovery config ekziston tashmë. Setup-i nuk do ta mbishkruajë.');
+        throw new RuntimeException('Konfigurimi i rikuperimit ekziston tashmë dhe nuk do të mbishkruhet.');
     }
 
     $dir = dirname($targetPath);
     if (!is_dir($dir) || !is_writable($dir)) {
-        throw new RuntimeException('Serveri nuk lejon shkrimin e recovery.local.php në includes.');
+        throw new RuntimeException('Serveri nuk lejon krijimin e skedarit privat recovery.local.php.');
     }
 
     $tmpPath = $targetPath . '.tmp-' . bin2hex(random_bytes(6));
@@ -89,21 +89,21 @@ function recovery_setup_write_private_file(string $targetPath, string $contents)
 
     if ($written === false || $written !== strlen($contents)) {
         @unlink($tmpPath);
-        throw new RuntimeException('Recovery config nuk u shkrua dot në server.');
+        throw new RuntimeException('Konfigurimi i rikuperimit nuk u shkrua dot në server.');
     }
 
     @chmod($tmpPath, 0600);
 
     if (file_exists($targetPath) || !@rename($tmpPath, $targetPath)) {
         @unlink($tmpPath);
-        throw new RuntimeException('Recovery config nuk u aktivizua dot në server.');
+        throw new RuntimeException('Konfigurimi i rikuperimit nuk u aktivizua dot në server.');
     }
 
     @chmod($targetPath, 0600);
 }
 
 if (!$completed && is_file($recoveryConfigPath)) {
-    $errors[] = 'Ekziston një recovery.local.php jo i përfunduar. Për siguri setup-i nuk do ta mbishkruajë.';
+    $errors[] = 'Ekziston një skedar recovery.local.php i papërfunduar. Për siguri, konfigurimi nuk do ta mbishkruajë.';
 }
 
 $form = [
@@ -122,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$completed && !$errors) {
         $protectionCodeConfirm = trim((string)($_POST['protection_code_confirm'] ?? ''));
 
         if (!recovery_setup_admin_password_valid($pdo, (int)$admin['id'], $currentPassword)) {
-            $errors[] = 'Password-i aktual i adminit nuk është i saktë.';
+            $errors[] = 'Password-i aktual nuk është i saktë.';
         }
 
         foreach (['sender_email', 'protected_email', 'recovery_email'] as $field) {
@@ -133,7 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$completed && !$errors) {
         }
 
         if ($form['protected_email'] !== '' && strcasecmp($form['protected_email'], $form['recovery_email']) === 0) {
-            $errors[] = 'Protected recovery email dhe recovery email duhet të jenë të ndryshme.';
+            $errors[] = 'Email-i i mbrojtur dhe email-i i hyrjes/rikuperimit duhet të jenë të ndryshëm.';
         }
 
         if (strlen($appPassword) !== 16) {
@@ -149,12 +149,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$completed && !$errors) {
         if (!$errors) {
             try {
                 recovery_setup_ensure_schema($pdo);
-                $checks[] = 'Databaza dhe password_reset_codes: OK';
+                $checks[] = 'Databaza dhe tabela password_reset_codes: në rregull';
 
                 if (!is_writable(dirname($recoveryConfigPath))) {
-                    throw new RuntimeException('Folderi includes nuk është writable nga PHP.');
+                    throw new RuntimeException('Dosja includes nuk lejon shkrim nga PHP.');
                 }
-                $checks[] = 'Private config storage: OK';
+                $checks[] = 'Ruajtja private e konfigurimit: në rregull';
 
                 $smtpConfig = [
                     'host' => 'smtp.gmail.com',
@@ -175,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$completed && !$errors) {
                     $testSubject,
                     $testBody
                 );
-                $checks[] = 'Gmail SMTP/TLS/Auth + protected email: OK';
+                $checks[] = 'Gmail SMTP/TLS, autentikimi dhe email-i i mbrojtur: në rregull';
 
                 smtp_send_text_email_with_config(
                     $smtpConfig,
@@ -183,13 +183,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$completed && !$errors) {
                     $testSubject,
                     $testBody
                 );
-                $checks[] = 'Recovery email i dytë: OK';
+                $checks[] = 'Email-i i hyrjes/rikuperimit: në rregull';
 
                 $protectionCodeHash = password_hash($protectionCode, PASSWORD_DEFAULT);
                 if ($protectionCodeHash === false) {
                     throw new RuntimeException('Hash-i i kodit privat nuk u krijua dot.');
                 }
-                $checks[] = 'Kodi privat u hash-ua: OK';
+                $checks[] = 'Kodi privat u ruajt si hash: në rregull';
 
                 $configContents = recovery_setup_config_contents(
                     $form['sender_email'],
@@ -219,8 +219,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$completed && !$errors) {
                     throw $e;
                 }
 
-                $checks[] = 'Recovery settings u ruajtën: OK';
-                $checks[] = 'recovery.local.php u krijua privatisht: OK';
+                $checks[] = 'Cilësimet e rikuperimit u ruajtën: në rregull';
+                $checks[] = 'Skedari privat recovery.local.php u krijua: në rregull';
                 $completed = true;
             } catch (Throwable $e) {
                 $errors[] = $e->getMessage();
@@ -233,7 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$completed && !$errors) {
 <html lang="sq">
 <head>
     <meta charset="utf-8">
-    <title>Recovery Setup | <?= e(site_bar_name()) ?> Admin</title>
+    <title>Konfigurimi i rikuperimit | <?= e(site_bar_name()) ?> Admin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/assets/css/admin.css?v=20260512-admin-header-actions-2">
 </head>
@@ -242,7 +242,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$completed && !$errors) {
         <?php render_admin_header($admin, 'settings'); ?>
 
         <main>
-            <h1 class="admin-title">Recovery Setup</h1>
+            <h1 class="admin-title">Konfigurimi i rikuperimit</h1>
             <p class="admin-muted">
                 Konfigurim njëpërdorimësh për Gmail SMTP dhe email-et e rikuperimit.
             </p>
@@ -253,15 +253,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$completed && !$errors) {
 
             <?php if ($completed): ?>
                 <section class="form-card">
-                    <div class="msg">Recovery configuration completed successfully.</div>
+                    <div class="msg">Konfigurimi i rikuperimit u përfundua me sukses.</div>
 
                     <?php foreach ($checks as $check): ?>
                         <p><?= e('✓ ' . $check) ?></p>
                     <?php endforeach; ?>
 
                     <p class="admin-muted">
-                        Setup-i është bllokuar dhe nuk mund të mbishkruajë konfigurimin ekzistues.
-                        Pas testit live kjo faqe mund të fshihet nga serveri dhe repo.
+                        Konfigurimi është i mbyllur dhe nuk mund të mbishkruajë të dhënat ekzistuese.
+                        Pas testimit në faqe, kjo faqe mund të hiqet nga serveri dhe repozitori.
                     </p>
 
                     <a class="btn" href="/tadeo-admin/settings.php">Kthehu te Cilësimet</a>
@@ -270,7 +270,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$completed && !$errors) {
                 <form class="form-card" method="post" autocomplete="off">
                     <?= csrf_field() ?>
 
-                    <label>Gmail dërgues</label>
+                    <label>Email-i dërgues i Gmail</label>
                     <input
                         name="sender_email"
                         type="email"
@@ -287,9 +287,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$completed && !$errors) {
                         inputmode="text"
                         required
                     >
-                    <div class="help-text">Pranon App Password-in 16-karakterësh; hapësirat hiqen automatikisht.</div>
+                    <div class="help-text">Pranon Google App Password-in me 16 karaktere; hapësirat hiqen automatikisht.</div>
 
-                    <label>Protected recovery email</label>
+                    <label>Email-i i mbrojtur i rikuperimit</label>
                     <input
                         name="protected_email"
                         type="email"
@@ -298,7 +298,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$completed && !$errors) {
                         required
                     >
 
-                    <label>Recovery email i dytë</label>
+                    <label>Email-i i hyrjes dhe rikuperimit</label>
                     <input
                         name="recovery_email"
                         type="email"
@@ -325,7 +325,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$completed && !$errors) {
                         required
                     >
 
-                    <label>Password aktual i adminit</label>
+                    <label>Password-i aktual</label>
                     <input
                         name="current_password"
                         type="password"
@@ -336,8 +336,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$completed && !$errors) {
                     <button type="submit">Testo dhe ruaj konfigurimin</button>
 
                     <div class="help-text">
-                        Asnjë App Password ose kod privat nuk ruhet në databazë. Konfigurimi ruhet vetëm
-                        në recovery.local.php privat pasi të dy email-et test të dërgohen me sukses.
+                        Google App Password dhe kodi privat nuk ruhen në databazë. Konfigurimi ruhet vetëm
+                        në skedarin privat recovery.local.php pasi email-et e testimit të dërgohen me sukses.
                     </div>
                 </form>
             <?php endif; ?>
