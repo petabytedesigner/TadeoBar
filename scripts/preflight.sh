@@ -70,6 +70,7 @@ required_files=(
   "database/migrations/20260831-password-recovery.sql"
   "database/migrations/20260901-security-ip-guard.sql"
   "database/migrations/20260901-product-menu-ordering.sql"
+  "database/migrations/20260902-auth-recovery-hardening.sql"
 )
 
 for file in "${required_files[@]}"; do
@@ -87,12 +88,57 @@ grep -q 'security_ip_guard' database/schema.sql \
   || fail "database/schema.sql is missing security_ip_guard"
 grep -q 'security_ip_guard' database/migrations/20260901-security-ip-guard.sql \
   || fail "IP guard migration is incomplete"
+grep -q 'session_version' database/schema.sql \
+  || fail "database/schema.sql is missing revocable admin sessions"
+grep -q 'sent_at' database/schema.sql \
+  || fail "database/schema.sql is missing delivered-code tracking"
+grep -q 'session_version' database/migrations/20260902-auth-recovery-hardening.sql \
+  || fail "Auth/recovery migration is missing session_version"
+grep -q 'sent_at' database/migrations/20260902-auth-recovery-hardening.sql \
+  || fail "Auth/recovery migration is missing sent_at"
 grep -q 'site_ip_guard_enforce' public/includes/db.php \
   || fail "db.php is not enforcing the site-wide IP guard"
 grep -q 'SITE_IP_GUARD_MAX_FAILED_LOGINS = 15' public/includes/security_guard.php \
   || fail "IP guard failed-login threshold is not configured as expected"
 grep -q 'SITE_IP_GUARD_BLOCK_HOURS = 24' public/includes/security_guard.php \
   || fail "IP guard block duration is not configured as expected"
+grep -q 'function find_admin_by_login_identifier' public/includes/auth.php \
+  || fail "Authentication does not support username/email identifiers"
+grep -q "return 'admin:'" public/includes/auth.php \
+  || fail "Username/email aliases are not sharing the same login-attempt key"
+grep -q 'function clear_failed_login_attempts' public/includes/auth.php \
+  || fail "Successful authentication does not have a soft-failure reset helper"
+grep -q 'clear_failed_login_attempts($pdo, $identifier, $admin)' public/includes/auth.php \
+  || fail "Successful authentication is not resetting the soft brute-force counter"
+grep -q 'session_version' public/includes/auth.php \
+  || fail "Admin sessions are not versioned"
+grep -q 'Username ose email' public/tadeo-admin/login.php \
+  || fail "Login UI does not expose username/email login"
+grep -q 'PASSWORD_RESET_MAX_CODE_ATTEMPTS = 10' public/includes/password_recovery.php \
+  || fail "Password-reset codes are not limited to 10 verification attempts"
+grep -q 'PASSWORD_RESET_MAX_REQUESTS_PER_SHORT_WINDOW = 3' public/includes/password_recovery.php \
+  || fail "Password-reset short-window send limit is not configured"
+grep -q 'PASSWORD_RESET_SHORT_WINDOW_MINUTES = 15' public/includes/password_recovery.php \
+  || fail "Password-reset short window is not 15 minutes"
+grep -q 'PASSWORD_RESET_MAX_REQUESTS_PER_LONG_WINDOW = 6' public/includes/password_recovery.php \
+  || fail "Password-reset 12-hour send limit is not configured"
+grep -q 'PASSWORD_RESET_LONG_WINDOW_HOURS = 12' public/includes/password_recovery.php \
+  || fail "Password-reset long window is not 12 hours"
+grep -q 'PASSWORD_RESET_REQUEST_COOLDOWN_SECONDS = 60' public/includes/password_recovery.php \
+  || fail "Password-reset resend cooldown is not 60 seconds"
+grep -q 'FOR UPDATE' public/includes/password_recovery.php \
+  || fail "Password-reset counters are not serialized with row locking"
+grep -q 'session_version = session_version + 1' public/includes/password_recovery.php \
+  || fail "Password reset is not revoking existing admin sessions"
+grep -q 'recovery_email_change_begin' public/tadeo-admin/settings.php \
+  || fail "Settings does not require verification before changing the login/recovery email"
+grep -q 'recovery_email_change_verify' public/tadeo-admin/settings.php \
+  || fail "Settings is missing login/recovery email verification"
+pending_email_cancel_calls=$(grep -Fc 'recovery_email_change_cancel();' public/tadeo-admin/settings.php || true)
+[ "$pending_email_cancel_calls" -ge 2 ] \
+  || fail "Password changes do not cancel pending login/recovery-email verification"
+ok "Authentication and password recovery hardening is present"
+
 grep -q 'sha256sum' scripts/deploy.sh \
   || fail "deploy.sh is not using SHA-256 content comparison"
 grep -Fq 'lftp -u "$FTP_USER","$FTP_PASS" "$FTP_HOST" < "$SYNC_SCRIPT"' scripts/deploy.sh \
@@ -110,7 +156,7 @@ grep -Fq 'SYNC_DIRS_READY["$rel_dir"]=1' scripts/deploy.sh \
   || fail "deploy.sh is not de-duplicating remote directory creation"
 grep -Fq 'set cmd:fail-exit no' scripts/deploy.sh \
   || fail "deploy.sh does not tolerate FTP 550 only during best-effort directory creation"
-ok "Security, checksum deployment, database recovery, and Termux/InfinityFree FTP handling are present"
+ok "Checksum deployment and Termux/InfinityFree FTP handling are present"
 
 grep -q 'trash_menu_number' database/schema.sql \
   || fail "database/schema.sql is missing trash-safe menu numbering"

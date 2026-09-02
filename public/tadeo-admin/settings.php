@@ -8,6 +8,10 @@ require_once __DIR__ . '/../includes/password_recovery.php';
 
 $admin = require_admin();
 $pdo = db();
+ensure_admin_session_version_schema($pdo);
+if (password_reset_table_exists($pdo)) {
+    password_reset_ensure_schema($pdo);
+}
 
 function setting_get(PDO $pdo, string $key, string $default = ''): string
 {
@@ -30,7 +34,12 @@ function setting_save(PDO $pdo, string $key, string $value): void
 
 function current_admin_row(PDO $pdo, int $adminId): ?array
 {
-    $stmt = $pdo->prepare("SELECT id, username, password_hash FROM admins WHERE id = ? AND is_active = 1 LIMIT 1");
+    $stmt = $pdo->prepare(
+        "SELECT id, username, password_hash, session_version
+         FROM admins
+         WHERE id = ? AND is_active = 1
+         LIMIT 1"
+    );
     $stmt->execute([$adminId]);
     $row = $stmt->fetch();
 
@@ -52,6 +61,7 @@ $recoveryEmail = recovery_user_email($pdo);
 $protectedEmail = protected_recovery_email();
 $protectedEnabled = protected_recovery_enabled($pdo);
 $protectedCodeConfigured = protected_recovery_code_configured();
+$pendingRecoveryEmail = recovery_email_change_pending();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_verify()) {
@@ -97,15 +107,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errors[] = 'Llogaria nuk u gjet.';
             } elseif ($currentPassword === '' || !password_verify($currentPassword, (string)$adminRow['password_hash'])) {
                 $errors[] = 'Password-i aktual nuk është i saktë.';
-            } elseif (!filter_var($submittedRecoveryEmail, FILTER_VALIDATE_EMAIL)) {
-                $errors[] = 'Vendos një email rikuperimi të vlefshëm.';
-            } elseif ($protectedEmail !== '' && strcasecmp($submittedRecoveryEmail, $protectedEmail) === 0) {
-                $errors[] = 'Email-i i rikuperimit duhet të jetë ndryshe nga email-i i mbrojtur.';
             } else {
-                recovery_setting_save($pdo, 'recovery_email', $submittedRecoveryEmail);
-                $recoveryEmail = $submittedRecoveryEmail;
-                $messages[] = 'Email-i i rikuperimit u ruajt me sukses.';
+                try {
+                    recovery_email_change_begin($pdo, (int)$admin['id'], $submittedRecoveryEmail);
+                    $pendingRecoveryEmail = recovery_email_change_pending();
+                    $messages[] = 'Kodi i verifikimit u dërgua në email-in e ri. Email-i aktual mbetet aktiv derisa verifikimi të përfundojë.';
+                } catch (Throwable $e) {
+                    $errors[] = $e->getMessage();
+                }
             }
+        }
+
+        if ($formType === 'recovery_email_verify') {
+            $verificationCode = trim((string)($_POST['recovery_email_code'] ?? ''));
+
+            try {
+                $recoveryEmail = recovery_email_change_verify(
+                    $pdo,
+                    (int)$admin['id'],
+                    $verificationCode
+                );
+                $pendingRecoveryEmail = null;
+                $messages[] = 'Email-i i hyrjes dhe rikuperimit u verifikua dhe u aktivizua.';
+            } catch (Throwable $e) {
+                $errors[] = $e->getMessage();
+                $pendingRecoveryEmail = recovery_email_change_pending();
+            }
+        }
+
+        if ($formType === 'recovery_email_cancel') {
+            recovery_email_change_cancel();
+            $pendingRecoveryEmail = null;
+            $messages[] = 'Ndryshimi i email-it u anulua.';
         }
 
         if ($formType === 'protected_recovery') {
@@ -187,13 +220,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } elseif ($newPassword !== $confirmPassword) {
                     $errors[] = 'Konfirmimi i password-it nuk përputhet.';
                 } else {
-                    $stmt = $pdo->prepare("UPDATE admins SET password_hash = ? WHERE id = ?");
-                    $stmt->execute([
-                        password_hash($newPassword, PASSWORD_DEFAULT),
-                        (int)$admin['id'],
-                    ]);
+                    $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
 
-                    $messages[] = 'Password-i u ndryshua me sukses.';
+                    if ($newHash === false) {
+                        $errors[] = 'Password-i i ri nuk u ruajt dot.';
+                    } else {
+                        try {
+                            $pdo->beginTransaction();
+
+                            $stmt = $pdo->prepare(
+                                'UPDATE admins '
+                                . 'SET password_hash = ?, session_version = session_version + 1 '
+                                . 'WHERE id = ? AND is_active = 1'
+                            );
+                            $stmt->execute([$newHash, (int)$admin['id']]);
+
+                            if ($stmt->rowCount() !== 1) {
+                                throw new RuntimeException('Llogaria nuk u gjet ose nuk është aktive.');
+                            }
+
+                            if (password_reset_table_exists($pdo)) {
+                                $stmt = $pdo->prepare(
+                                    'UPDATE password_reset_codes SET used_at = NOW() '
+                                    . 'WHERE admin_id = ? AND used_at IS NULL'
+                                );
+                                $stmt->execute([(int)$admin['id']]);
+                            }
+
+                            $pdo->commit();
+                            refresh_current_admin_session_version($pdo, (int)$admin['id']);
+                            recovery_email_change_cancel();
+                            $pendingRecoveryEmail = null;
+
+                            recovery_send_security_notice(
+                                recovery_recipient_emails($pdo),
+                                site_bar_name() . ' - Njoftim sigurie',
+                                "Password-i i panelit të administrimit u ndryshua.\n\n"
+                                . "Nëse nuk e bëre ti këtë ndryshim, kontrollo menjëherë aksesin në llogari."
+                            );
+
+                            $messages[] = 'Password-i u ndryshua me sukses. Sesionet e tjera u çaktivizuan.';
+                        } catch (Throwable $e) {
+                            if ($pdo->inTransaction()) {
+                                $pdo->rollBack();
+                            }
+                            $errors[] = $e->getMessage();
+                        }
+                    }
                 }
             } else {
                 $errors[] = 'Zgjedhja nuk është e vlefshme.';
@@ -201,6 +274,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+$recoveryEmail = recovery_user_email($pdo);
+$pendingRecoveryEmail = recovery_email_change_pending();
 ?>
 <!doctype html>
 <html lang="sq">
@@ -259,7 +335,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="settings-stack">
                 <section class="form-card">
                     <h2 class="settings-card-title">Cilësimet e menusë</h2>
-                    <p class="admin-muted">Këto të dhëna do përdoren nga menuja publike.</p>
+                    <p class="admin-muted">Këto të dhëna përdoren nga menuja publike.</p>
 
                     <form method="post">
                         <?= csrf_field() ?>
@@ -295,40 +371,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </section>
 
                 <section class="form-card">
-                    <h2 class="settings-card-title">Rikuperimi i password-it</h2>
+                    <h2 class="settings-card-title">Email-i i hyrjes dhe rikuperimit</h2>
                     <p class="admin-muted">
-                        Vendos email-in ku do të dërgohet kodi 6-shifror për rikuperimin e password-it.
+                        Ky email përdoret si alternativë ndaj username-it për hyrje dhe për marrjen e kodeve të rikuperimit.
                     </p>
 
-                    <form method="post">
-                        <?= csrf_field() ?>
-                        <input type="hidden" name="form_type" value="recovery_email">
+                    <div class="panel">
+                        <strong>Email aktiv</strong>
+                        <p><?= $recoveryEmail !== '' ? e($recoveryEmail) : 'Nuk është vendosur ende.' ?></p>
+                    </div>
 
-                        <div class="form-grid">
-                            <div class="full">
-                                <label>Email-i i rikuperimit</label>
-                                <input
-                                    name="recovery_email"
-                                    type="email"
-                                    value="<?= e($recoveryEmail) ?>"
-                                    autocomplete="email"
-                                    placeholder="email@example.com"
-                                    required
-                                >
-                                <div class="help-text">
-                                    Ky email përdoret për marrjen e kodeve të rikuperimit dhe mund të ndryshohet nga kjo faqe.
+                    <?php if ($pendingRecoveryEmail !== null): ?>
+                        <div class="msg">
+                            Në pritje të verifikimit: <strong><?= e($pendingRecoveryEmail['email']) ?></strong>
+                        </div>
+
+                        <form method="post" autocomplete="off">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="form_type" value="recovery_email_verify">
+
+                            <label>Kodi 6-shifror</label>
+                            <input
+                                name="recovery_email_code"
+                                inputmode="numeric"
+                                pattern="[0-9]{6}"
+                                maxlength="6"
+                                autocomplete="one-time-code"
+                                required
+                            >
+                            <div class="help-text">
+                                Email-i i vjetër mbetet aktiv derisa kodi i dërguar në email-in e ri të verifikohet.
+                            </div>
+
+                            <button type="submit">Verifiko dhe aktivizo email-in</button>
+                        </form>
+
+                        <form method="post">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="form_type" value="recovery_email_cancel">
+                            <button class="btn btn-secondary" type="submit">Anulo ndryshimin e email-it</button>
+                        </form>
+                    <?php else: ?>
+                        <form method="post">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="form_type" value="recovery_email">
+
+                            <div class="form-grid">
+                                <div class="full">
+                                    <label>Email i ri</label>
+                                    <input
+                                        name="recovery_email"
+                                        type="email"
+                                        value="<?= e($recoveryEmail) ?>"
+                                        autocomplete="email"
+                                        placeholder="email@example.com"
+                                        required
+                                    >
+                                </div>
+
+                                <div class="full">
+                                    <label>Password aktual</label>
+                                    <input name="current_password" type="password" autocomplete="current-password" required>
+                                    <div class="help-text">Email-i i ri aktivizohet vetëm pasi të verifikohet me kod.</div>
                                 </div>
                             </div>
 
-                            <div class="full">
-                                <label>Password aktual</label>
-                                <input name="current_password" type="password" autocomplete="current-password" required>
-                                <div class="help-text">Kërkohet për të ndryshuar email-in e rikuperimit.</div>
-                            </div>
-                        </div>
-
-                        <button type="submit">Ruaj email-in e rikuperimit</button>
-                    </form>
+                            <button type="submit">Dërgo kodin e verifikimit</button>
+                        </form>
+                    <?php endif; ?>
 
                     <div class="settings-divider"></div>
 
@@ -344,7 +454,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <?php endif; ?>
 
                         <div class="help-text">
-                            Ky email është i mbrojtur. Nuk mund të ndryshohet nga paneli dhe aktivizimi ose çaktivizimi kërkon kodin privat të mbrojtjes.
+                            Ky email përdoret vetëm si adresë e mbrojtur për rikuperim dhe nuk mund të përdoret për hyrje në panel.
                         </div>
                     </div>
 
@@ -378,7 +488,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <section class="form-card">
                     <h2 class="settings-card-title">Llogaria</h2>
-                    <p class="admin-muted">Zgjidh çfarë do të ndryshosh.</p>
+                    <p class="admin-muted">Ndrysho username-in ose password-in e hyrjes.</p>
 
                     <form method="post" id="adminAccountForm">
                         <?= csrf_field() ?>
@@ -421,7 +531,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <div>
                                     <label>Password i ri</label>
                                     <input name="new_password" type="password" autocomplete="new-password">
-                                    <div class="help-text">Përdor një password të fortë.</div>
+                                    <div class="help-text">Përdor një password të fortë me të paktën 10 karaktere.</div>
                                 </div>
 
                                 <div>

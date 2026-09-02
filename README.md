@@ -10,20 +10,25 @@ Digital menu and WiFi website for Bar Tadeo in Durrës.
 - Languages: Albanian and English
 - Currency: ALL
 
-## Login brute-force protection
+## Admin authentication
+
+The admin panel accepts either the account username or the verified recovery email as the login identifier. Both identifiers resolve to the same admin account and therefore share the same soft brute-force counter.
 
 Admin login has two server-side protection layers:
 
-- soft guard: 5 failed attempts for the same username + IP within 10 minutes
+- soft guard: 5 failed attempts for the same resolved account + IP within 10 minutes
 - hard IP guard: 15 failed login attempts from the same IP within a 24-hour counter window trigger a 24-hour block
-- the hard counter is independent of username, so rotating usernames does not bypass it
-- a successful login resets the hard counter for that IP
-- only a SHA-256 IP hash is stored; the raw IP is not stored in the guard table
-- an actively blocked IP is denied across the dynamic Bar Tadeo application, including the public menu/API and admin/recovery routes
+- rotating between username and recovery email does not bypass the soft guard
+- the hard counter is independent of the login identifier, so rotating unknown identifiers does not bypass it
+- a successful login resets both the soft account/IP counter and the hard counter for that IP
+- only SHA-256 IP hashes are stored; raw IP addresses are not stored in the guard tables
+- an actively blocked IP is denied across the dynamic Bar Tadeo application, including public/API and admin/recovery routes
 - other IP addresses remain unaffected
-- client-facing HTML/JavaScript does not expose the thresholds or block duration
+- client-facing HTML/JavaScript does not expose the hard-block thresholds or duration
 - the ordinary soft-limit response is intentionally indistinguishable from invalid credentials
 - a hard-blocked request receives a generic `404 Not Found` response without `Retry-After` or a lockout explanation
+
+Admin sessions are versioned with `admins.session_version`. A password change increments the version, so previously issued admin sessions are rejected on their next request. The currently authenticated session is refreshed only when the password is changed from Admin → Settings; a password reset invalidates all previous admin sessions.
 
 The hard guard state is stored in `security_ip_guard`. Its schema is present in `database/schema.sql`, and the focused migration is:
 
@@ -38,11 +43,23 @@ database/migrations/20260901-security-ip-guard.sql
 The admin login includes a Gmail SMTP password-recovery flow:
 
 - no email or username is entered on the Forgot Password page
-- one random 6-digit code is sent to the configured recovery destinations
-- the code expires after 10 minutes and is stored only as a hash
-- the editable recovery email is managed from Admin → Settings
-- the protected recovery email is read-only in the panel and can only be enabled/disabled with a private protection code
-- Gmail SMTP credentials and protected recovery secrets stay in `public/includes/recovery.local.php` and are never committed
+- one cryptographically random 6-digit code is sent to the configured recovery destinations
+- the code expires after 10 minutes and is stored only as a password hash
+- each code allows at most 10 verification attempts; the tenth failed attempt invalidates it
+- requesting a new successfully delivered code invalidates the previous active code
+- resend cooldown: at least 60 seconds between successfully delivered codes
+- short-window limit: at most 3 successfully delivered codes from the same IP in 15 minutes
+- long-window limit: at most 6 successfully delivered codes for the account in a rolling 12-hour window
+- failed SMTP deliveries do not consume the send quotas
+- issuance and verification use database row locking so parallel requests cannot bypass counters
+- if multiple recovery destinations are configured, one successful delivery is sufficient to keep the generated code usable
+- a newer successfully delivered code also invalidates any older verified recovery authorization
+- password reset increments `session_version`, invalidates outstanding reset codes and rejects older admin sessions
+- security-notification email is sent on password changes and login/recovery-email changes when SMTP is available
+
+The editable recovery email is also the email login identifier. Changing it from Admin → Settings requires the current password and a 6-digit verification code sent to the new address; the existing email remains active until verification succeeds. The protected recovery email remains recovery-only and cannot be used to log in.
+
+Gmail SMTP credentials and protected recovery secrets stay in `public/includes/recovery.local.php` and are never committed.
 
 Initial live configuration is performed from the authenticated one-time page:
 
@@ -64,11 +81,15 @@ A non-secret DB template is available at:
 public/includes/config.local.example.php
 ```
 
-For manual/fallback database upgrades, the focused idempotent recovery migration remains available at:
+Focused database migrations:
 
 ```text
 database/migrations/20260831-password-recovery.sql
+database/migrations/20260901-security-ip-guard.sql
+database/migrations/20260902-auth-recovery-hardening.sql
 ```
+
+The September 2 hardening migration adds revocable admin-session state and successful-reset-delivery tracking. Runtime helpers also add the required columns automatically on an older installation before they are needed.
 
 ## Product numbering and trash
 
@@ -108,7 +129,7 @@ Before deployment, run:
 bash scripts/preflight.sh
 ```
 
-The preflight checks required commands, FTP configuration, critical recovery/security files, strict product-ordering integration, PHP syntax, checksum-deploy requirements, deploy-script shell syntax, and Git exclusions for private files. It intentionally does not require local MySQL credentials for an existing live installation.
+The preflight checks required commands, FTP configuration, critical authentication/recovery/security files, recovery limits, revocable sessions, verified recovery-email integration, strict product-ordering integration, PHP syntax, checksum-deploy requirements, deploy-script shell syntax, and Git exclusions for private files. It intentionally does not require local MySQL credentials for an existing live installation.
 
 Deployment is handled by:
 

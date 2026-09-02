@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS `admins` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `username` varchar(120) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
+  `session_version` int unsigned NOT NULL DEFAULT 1,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
@@ -81,6 +82,7 @@ CREATE TABLE IF NOT EXISTS `password_reset_codes` (
   `admin_id` int unsigned NOT NULL,
   `code_hash` varchar(255) NOT NULL,
   `request_ip_hash` char(64) NOT NULL,
+  `sent_at` datetime DEFAULT NULL,
   `attempts` tinyint unsigned NOT NULL DEFAULT 0,
   `expires_at` datetime NOT NULL,
   `used_at` datetime DEFAULT NULL,
@@ -88,6 +90,8 @@ CREATE TABLE IF NOT EXISTS `password_reset_codes` (
   PRIMARY KEY (`id`),
   KEY `idx_password_reset_ip_time` (`request_ip_hash`,`created_at`),
   KEY `idx_password_reset_admin_active` (`admin_id`,`used_at`,`expires_at`),
+  KEY `idx_password_reset_admin_sent` (`admin_id`,`sent_at`),
+  KEY `idx_password_reset_ip_sent` (`request_ip_hash`,`sent_at`),
   CONSTRAINT `fk_password_reset_admin` FOREIGN KEY (`admin_id`) REFERENCES `admins` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -179,6 +183,65 @@ SET @sql = IF(
   ),
   'SELECT 1',
   'ALTER TABLE `products` ADD COLUMN `trash_menu_number` int unsigned NULL DEFAULT NULL AFTER `menu_number`'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Add admins.session_version only when it is missing.
+SET @sql = IF(
+  EXISTS(
+    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'admins'
+      AND COLUMN_NAME = 'session_version'
+  ),
+  'SELECT 1',
+  'ALTER TABLE `admins` ADD COLUMN `session_version` int unsigned NOT NULL DEFAULT 1 AFTER `password_hash`'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Add password_reset_codes.sent_at only when it is missing.
+SET @sql = IF(
+  EXISTS(
+    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'password_reset_codes'
+      AND COLUMN_NAME = 'sent_at'
+  ),
+  'SELECT 1',
+  'ALTER TABLE `password_reset_codes` ADD COLUMN `sent_at` datetime DEFAULT NULL AFTER `request_ip_hash`'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Add reset-code rate-limit indexes only when missing.
+SET @sql = IF(
+  EXISTS(
+    SELECT 1 FROM INFORMATION_SCHEMA.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'password_reset_codes'
+      AND INDEX_NAME = 'idx_password_reset_admin_sent'
+  ),
+  'SELECT 1',
+  'ALTER TABLE `password_reset_codes` ADD KEY `idx_password_reset_admin_sent` (`admin_id`,`sent_at`)'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @sql = IF(
+  EXISTS(
+    SELECT 1 FROM INFORMATION_SCHEMA.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'password_reset_codes'
+      AND INDEX_NAME = 'idx_password_reset_ip_sent'
+  ),
+  'SELECT 1',
+  'ALTER TABLE `password_reset_codes` ADD KEY `idx_password_reset_ip_sent` (`request_ip_hash`,`sent_at`)'
 );
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
