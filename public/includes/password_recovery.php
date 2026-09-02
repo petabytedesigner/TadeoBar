@@ -364,6 +364,7 @@ function password_reset_current_row(PDO $pdo, int $resetId, bool $forUpdate = fa
 function password_reset_verify_code(PDO $pdo, int $resetId, string $code): array
 {
     password_reset_ensure_schema($pdo);
+    ensure_admin_session_version_schema($pdo);
     $pdo->beginTransaction();
 
     try {
@@ -408,6 +409,15 @@ function password_reset_verify_code(PDO $pdo, int $resetId, string $code): array
             throw new RuntimeException('Kodi 6-shifror nuk është i saktë.');
         }
 
+        $stmt = $pdo->prepare(
+            'SELECT session_version FROM admins WHERE id = ? AND is_active = 1 LIMIT 1'
+        );
+        $stmt->execute([(int)$row['admin_id']]);
+        $sessionVersion = $stmt->fetchColumn();
+        if ($sessionVersion === false) {
+            throw new RuntimeException('Llogaria nuk është më aktive.');
+        }
+
         $stmt = $pdo->prepare('UPDATE password_reset_codes SET used_at = NOW() WHERE id = ?');
         $stmt->execute([$resetId]);
         $pdo->commit();
@@ -422,6 +432,8 @@ function password_reset_verify_code(PDO $pdo, int $resetId, string $code): array
     session_regenerate_id(true);
     $_SESSION['password_reset_admin_id'] = (int)$row['admin_id'];
     $_SESSION['password_reset_authorized_until'] = time() + (PASSWORD_RESET_CODE_TTL_MINUTES * 60);
+    $_SESSION['password_reset_authorized_reset_id'] = $resetId;
+    $_SESSION['password_reset_authorized_session_version'] = (int)$sessionVersion;
     unset($_SESSION['password_reset_id']);
 
     return ['admin_id' => (int)$row['admin_id']];
@@ -433,9 +445,51 @@ function password_reset_authorized_admin_id(): ?int
 
     $adminId = (int)($_SESSION['password_reset_admin_id'] ?? 0);
     $authorizedUntil = (int)($_SESSION['password_reset_authorized_until'] ?? 0);
+    $authorizedResetId = (int)($_SESSION['password_reset_authorized_reset_id'] ?? 0);
+    $authorizedSessionVersion = (int)($_SESSION['password_reset_authorized_session_version'] ?? 0);
 
-    if ($adminId <= 0 || $authorizedUntil < time()) {
-        unset($_SESSION['password_reset_admin_id'], $_SESSION['password_reset_authorized_until']);
+    $clearAuthorization = static function (): void {
+        unset(
+            $_SESSION['password_reset_admin_id'],
+            $_SESSION['password_reset_authorized_until'],
+            $_SESSION['password_reset_authorized_reset_id'],
+            $_SESSION['password_reset_authorized_session_version']
+        );
+    };
+
+    if (
+        $adminId <= 0
+        || $authorizedUntil < time()
+        || $authorizedResetId <= 0
+        || $authorizedSessionVersion <= 0
+    ) {
+        $clearAuthorization();
+        return null;
+    }
+
+    $pdo = db();
+    ensure_admin_session_version_schema($pdo);
+    password_reset_ensure_schema($pdo);
+
+    $stmt = $pdo->prepare(
+        'SELECT session_version FROM admins WHERE id = ? AND is_active = 1 LIMIT 1'
+    );
+    $stmt->execute([$adminId]);
+    $currentSessionVersion = $stmt->fetchColumn();
+
+    if ($currentSessionVersion === false || (int)$currentSessionVersion !== $authorizedSessionVersion) {
+        $clearAuthorization();
+        return null;
+    }
+
+    $stmt = $pdo->prepare(
+        'SELECT MAX(id) FROM password_reset_codes WHERE admin_id = ? AND sent_at IS NOT NULL'
+    );
+    $stmt->execute([$adminId]);
+    $latestResetId = (int)$stmt->fetchColumn();
+
+    if ($latestResetId !== $authorizedResetId) {
+        $clearAuthorization();
         return null;
     }
 
@@ -492,6 +546,8 @@ function password_reset_complete(PDO $pdo, int $adminId, string $newPassword): v
     unset(
         $_SESSION['password_reset_admin_id'],
         $_SESSION['password_reset_authorized_until'],
+        $_SESSION['password_reset_authorized_reset_id'],
+        $_SESSION['password_reset_authorized_session_version'],
         $_SESSION['password_reset_id']
     );
     session_regenerate_id(true);
